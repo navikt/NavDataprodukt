@@ -1,4 +1,4 @@
-Package: Nav-dataprodukt
+Package: NavDataprodukt
 Title: Nav - Standard Statistical Data Suppression Tools
 Version: 0.1.0
 Authors@R: person("Marte", "Nordin", email = "marte.nordin@nav.no", role = c("aut", "cre"))
