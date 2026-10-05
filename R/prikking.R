@@ -7,6 +7,7 @@
 #' @param formula A formula object or string expression defining the model structure.
 #' @param tallKol Character string indicating the numeric column to count/suppress.
 #' @param prikking Character ("ja"/"nei"). If "nei", suppression is bypassed.
+#' @param saerskilt Character ("ja"/"nei"). If "nei", normal threshold is used. If "ja", a higher threshold is used.
 #' @param se_prikk Character ("ja"/"nei"). If "ja", returns flag columns; otherwise, blanks out data.
 #'
 #' @return A data frame with primary/secondary suppression applied.
@@ -16,7 +17,7 @@
 #' @importFrom stats as.formula
 
 
-Prikking <- function(data, varKol,formula, tallKol, prikking,se_prikk) {
+Prikking <- function(data, varKol,formula, tallKol, prikking,saerskilt,se_prikk) {
   utvalgte_kolonner <- c(varKol, tallKol)
   if (!all(utvalgte_kolonner %in% names(data))) {
     stop("En eller flere kolonner eksisterer ikke i kildetabellen.")
@@ -33,6 +34,9 @@ Prikking <- function(data, varKol,formula, tallKol, prikking,se_prikk) {
   if(tolower(prikking) == 'nei'){
     maxN_val     <- -1
     protectZeros <- FALSE
+  }else if(tolower(saerskilt) == 'ja'){
+    maxN_val     <- 5
+    protectZeros <- TRUE
   }else{maxN_val     <- 3
   protectZeros <- TRUE
   }
