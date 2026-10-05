@@ -4,7 +4,7 @@
 \alias{Prikking}
 \title{Statistical Data Suppression (Prikking)}
 \usage{
-Prikking(data, varKol, formula, tallKol, prikking, se_prikk)
+Prikking(data, varKol, formula, tallKol, prikking, saerskilt, se_prikk)
 }
 \arguments{
 \item{data}{A data frame containing the source columns.}
@@ -16,6 +16,8 @@ Prikking(data, varKol, formula, tallKol, prikking, se_prikk)
 \item{tallKol}{Character string indicating the numeric column to count/suppress.}
 
 \item{prikking}{Character ("ja"/"nei"). If "nei", suppression is bypassed.}
+
+\item{saerskilt}{Character ("ja"/"nei"). If "nei", suppression is based on standard level, if "ja" a higher threshold is used.}
 
 \item{se_prikk}{Character ("ja"/"nei"). If "ja", returns flag columns; otherwise, blanks out data.}
 }
