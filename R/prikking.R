@@ -35,7 +35,7 @@ Prikking <- function(data, varKol,formula, tallKol, prikking,saerskilt,se_prikk)
     maxN_val     <- -1
     protectZeros <- FALSE
   }else if(tolower(saerskilt) == 'ja'){
-    maxN_val     <- 5
+    maxN_val     <- 20
     protectZeros <- TRUE
   }else{maxN_val     <- 3
   protectZeros <- TRUE
