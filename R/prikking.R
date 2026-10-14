@@ -25,10 +25,6 @@ Prikking <- function(data, varKol,formula, tallKol, prikking,saerskilt,se_prikk)
 
   sub_data <- data[utvalgte_kolonner]
 
-  #dimVar <- 1:(ncol(sub_data)-1)
-  freqVar <- tallKol
-
-
   sub_data[[tallKol]][is.na(sub_data[[tallKol]])] <- 0 # Maa legges paa hvis verdikolonner kan inneholde NULL
 
   if(tolower(prikking) == 'nei'){
@@ -58,7 +54,7 @@ Prikking <- function(data, varKol,formula, tallKol, prikking,saerskilt,se_prikk)
 
   prikk <- GaussSuppressionFromData(data = sub_data,
                                     formula = formula,
-                                    freqVar = freqVar,
+                                    freqVar = tallKol,
                                     maxN = maxN_val,
                                     protectZeros = protectZeros,
                                     singletonMethod = "none",
