@@ -15,6 +15,11 @@ hent_data <- function(connection, query = "") {
     stop("Feil i databaseconnection.")
   }
 
-  data <- DBI::dbGetQuery(connection, query, encoding = "latin1")
+  data <- DBI::dbGetQuery(connection, query)
+
+  # Sett locale to handle Norwegian special characters
+  Sys.setlocale("LC_ALL", "nb-NO.UTF-8")
+  Sys.setenv(LANG = "nb-NO.UTF-8")
+  
   return(data)
 }
