@@ -67,6 +67,9 @@ Prikking <- function(data, varKol,formula, tallKol, prikking,saerskilt,se_prikk)
                                     avoidHierarchical = TRUE
   )
 
+  # Erstatt "Total" med "I alt"
+  prikk[prikk == "Total"] <- "I alt"
+
   if(tolower(se_prikk) == 'ja'){
     return(prikk)
   }else{  prikk[[tallKol]][prikk$suppressed == TRUE] <- NA
