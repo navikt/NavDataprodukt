@@ -17,7 +17,7 @@ Prikking(data, varKol, formula, tallKol, prikking, saerskilt, se_prikk)
 
 \item{prikking}{Character ("ja"/"nei"). If "nei", suppression is bypassed.}
 
-\item{saerskilt}{Character ("ja"/"nei"). If "nei", suppression is based on standard level, if "ja" a higher threshold is used.}
+\item{saerskilt}{Character ("ja"/"nei"). If "nei", normal threshold is used. If "ja", a higher threshold is used.}
 
 \item{se_prikk}{Character ("ja"/"nei"). If "ja", returns flag columns; otherwise, blanks out data.}
 }
