@@ -1,4 +1,18 @@
-
+#' Statistical Data Suppression to use from python (dvh_prikking)
+#'
+#' A wrapper function to perform data suppression using `GaussSuppressionFromData` from the data warehouse, using python to call this function.
+#'
+#' @param data A data frame containing only the relevant columns for the result, that is the dimension columns and one value.
+#' @param formula A formula object or string expression defining the model structure.
+#' @param tallKol Character string indicating the numeric column to count/suppress.
+#' @param prikking Character ("ja"/"nei"). If "nei", suppression is bypassed.
+#' @param saerskilt Character ("ja"/"nei"). If "nei", normal threshold is used. If "ja", a higher threshold is used.
+#'
+#' @return The functions return two data frame with primary/secondary suppression applied, one that is cleaned, and one that contains original data with suppression flags.
+#' @export
+#'
+#' @importFrom GaussSuppression GaussSuppressionFromData
+#' @importFrom stats as.formula
 dvh_prikking <- function(data, formula, tallKol, prikking,saerskilt) {
   
   colnames(data) <- tolower(colnames(data))
