@@ -64,7 +64,7 @@ dvh_prikking <- function(data, formula, tallKol, prikking,saerskilt) {
 
   smal <- prikk
 
-  #smal[[freqVar]][smal$suppressed == TRUE] <- NA
+  smal[[freqVar]][smal$suppressed == TRUE] <- NA
 
   drops <-c("primary", "suppressed")
   smal <- smal[ , !(names(smal) %in% drops), drop = FALSE]
