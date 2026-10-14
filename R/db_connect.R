@@ -22,8 +22,7 @@ db_connect <- function(database = "DWHI", uid = NULL, dwhi_cred = c("x","y","z")
       odbc::odbc(),
       dsn      = dwhi_cred[1],
       uid      = dwhi_cred[2],
-      pwd      = dwhi_cred[3],
-      encoding = "latin1"
+      pwd      = dwhi_cred[3]
     )
 
     # Tvinger RStudio til å vise connection til databasen og liste opp skjema/tabeller.
@@ -41,8 +40,7 @@ db_connect <- function(database = "DWHI", uid = NULL, dwhi_cred = c("x","y","z")
       odbc::odbc(),
       dsn      = database,
       uid      = uid,
-      pwd      = rstudioapi::askForPassword(paste("Skriv inn passord for database ", database, " og bruker ", uid)),
-      encoding = "latin1"
+      pwd      = rstudioapi::askForPassword(paste("Skriv inn passord for database ", database, " og bruker ", uid))
     )
 
     # Tvinger RStudio til å vise connection til databasen og liste opp skjema/tabeller.
