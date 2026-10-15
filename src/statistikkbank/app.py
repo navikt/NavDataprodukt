@@ -6,7 +6,7 @@ from pathlib import Path
 import oracledb
 import pandas as pd
 
-from statistikkbank import lokal, oracle
+from statistikkbank import oracle, lokal
 from statistikkbank.config import Configuration, SmallAggregate, resolve_secret
 from statistikkbank.prikking import prikking
 

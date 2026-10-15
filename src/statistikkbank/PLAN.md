@@ -173,7 +173,10 @@ src/
   statistikkbank/
     __init__.py
     cli.py # argparse
-    oracle.py
+    db/
+      operations.py
+      metadata.py
+      validation.py
     prikking.py
     config.py  # pydantic models
     lokal.py # csv filer fra lokal

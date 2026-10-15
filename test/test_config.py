@@ -11,7 +11,7 @@ from statistikkbank.oracle import (
     parse_metadata,
     write_result,
 )
-from statistikkbank.prikking import prikking_r_ikke_i_bruk
+from statistikkbank.prikking import prikking
 from statistikkbank.lokal import apply_incremental
 
 
@@ -53,9 +53,9 @@ def test_resolve_env_reference(monkeypatch):
     assert resolve_secret("env://TEST_PASSWORD", password=True) == "secret"
 
 
-def test_prikking_wrapper_adds_boolean_column_and_preserves_input_dtypes():
+def test_prikking_adds_boolean_column_and_preserves_input_dtypes():
     data = pd.DataFrame({"periode": pd.Series([202501], dtype="int64")})
-    result = prikking_r_ikke_i_bruk(
+    result = prikking(
         data,
         periode="periode",
         formula="~ periode",
