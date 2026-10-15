@@ -1,5 +1,5 @@
 [project]
-name = "navdataprodukt"
+name = "statistikkbank"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-navdataprodukt = "navdataprodukt:main"
+statistikkbank = "statistikkbank:main"
 
 [build-system]
 requires = ["uv_build>=0.12.19,<0.13.0"]
