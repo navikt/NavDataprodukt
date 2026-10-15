@@ -16,7 +16,7 @@ Use oracledb, ppy2 and pandas. All orchestration and interaction with the databa
 2. **Configuration location:** `--config` accepts a YAML file. Resolve relative paths from the directory containing that file.
 3. **Oracle connection profiles:** Allowed values for `connection.database` are `DWHP`, `DWHQ`, `DWHU`, and `DWHR`. Use placeholder mappings for host, port, and service name for now.
 4. **Secret references:** Support the URI forms shown in the configuration example. Google Secret Manager payloads are UTF-8 strings and may contain a flat JSON object. Allow `terminal://` only when stdin is a TTY. Fail if a referenced value is missing.
-5. **SQL contract:** Each SQL file must contain exactly one `SELECT` statement and no bind parameters. Returned column names must match the configured `kolonne` values. Source column types come from Oracle.
+5. **SQL contract:** Pass SQL files to Oracle without pre-validating that they contain a `SELECT` statement or have no bind parameters. Returned column names must match the configured `kolonne` values. Source column types come from Oracle.
 6. **Database writes:** `tabell` is the target table name. Use the configured `kolonne` values as output column names. Do not create uniqueness constraints. Write each "smalt aggregat" in one transaction. If the result has no rows, make no database changes.
 7. **Incremental modes:** The modes operate on the configured period column:
    - `overskriv_ikke` appends periods that do not already exist and logs a warning for periods that already exist.

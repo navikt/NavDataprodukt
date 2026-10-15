@@ -13,65 +13,6 @@ from statistikkbank.config import DATABASE_PROFILES, DatabaseConnection, SmallAg
 LOGGER = logging.getLogger(__name__)
 
 
-def validate_select(sql: str) -> str:
-    mask = list(sql)
-    semicolons: list[int] = []
-    index = 0
-    while index < len(sql):
-        if sql.startswith("--", index):
-            end = sql.find("\n", index)
-            end = len(sql) if end == -1 else end
-            mask[index:end] = " " * (end - index)
-            index = end
-        elif sql.startswith("/*", index):
-            end = sql.find("*/", index + 2)
-            if end == -1:
-                raise ValueError("SQL-filen inneholder en kommentar som ikke er avsluttet.")
-            end += 2
-            mask[index:end] = " " * (end - index)
-            index = end
-        elif sql[index] in {"'", '"'}:
-            quote = sql[index]
-            start = index
-            index += 1
-            while index < len(sql):
-                if sql[index] == quote:
-                    if index + 1 < len(sql) and sql[index + 1] == quote:
-                        index += 2
-                        continue
-                    index += 1
-                    break
-                index += 1
-            else:
-                raise ValueError("SQL-filen inneholder en streng eller identifikator som ikke er avsluttet.")
-            mask[start:index] = " " * (index - start)
-        elif (
-            sql[index] == ":"
-            and index + 1 < len(sql)
-            and re.match(r"[A-Za-z_0-9]", sql[index + 1])
-        ):
-            raise ValueError("SQL-spørringen kan ikke inneholde bind-parametere.")
-        elif sql[index] == ";":
-            semicolons.append(index)
-            index += 1
-        else:
-            index += 1
-    cleaned = "".join(mask).strip()
-    if not re.match(r"(?is)^(select|with)\b", cleaned):
-        raise ValueError("SQL-filen må inneholde én SELECT-spørring.")
-    if re.match(r"(?is)^with\b", cleaned) and not re.search(r"\bselect\b", cleaned, re.I):
-        raise ValueError("SQL-filen må inneholde én SELECT-spørring.")
-    if re.search(r"\bfor\s+update\b", cleaned, re.I):
-        raise ValueError("SQL-spørringen kan ikke låse rader med FOR UPDATE.")
-    if len(semicolons) > 1 or (
-        semicolons and "".join(mask[semicolons[0] + 1 :]).strip()
-    ):
-        raise ValueError("SQL-filen må inneholde nøyaktig én SELECT-spørring.")
-    if re.search(r"\b(insert|update|delete|merge|create|alter|drop|begin|declare)\b", cleaned, re.I):
-        raise ValueError("SQL-filen må inneholde bare én SELECT-spørring.")
-    return sql[: semicolons[0]].rstrip() if semicolons else sql.strip()
-
-
 def connect(configuration: DatabaseConnection) -> oracledb.Connection:
     profile = DATABASE_PROFILES[configuration.database]
     connection = oracledb.connect(
@@ -90,9 +31,8 @@ def connect(configuration: DatabaseConnection) -> oracledb.Connection:
 
 
 def read_query(connection: oracledb.Connection, sql: str, aggregate: SmallAggregate) -> tuple[pd.DataFrame, dict[str, str]]:
-    query = validate_select(sql)
     with connection.cursor() as cursor:
-        cursor.execute(query)
+        cursor.execute(sql.strip().removesuffix(";").rstrip())
         columns = [description[0].lower() for description in cursor.description or []]
         rows = cursor.fetchall()
         source_types = {

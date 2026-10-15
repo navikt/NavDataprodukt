@@ -9,7 +9,6 @@ from statistikkbank.config import Configuration, resolve_secret
 from statistikkbank.oracle import (
     compatible_type,
     parse_metadata,
-    validate_select,
     write_result,
 )
 from statistikkbank.prikking import prikking
@@ -61,24 +60,6 @@ def test_mock_prikking_adds_boolean_column_and_preserves_input_dtypes():
     assert result["prikket"].tolist() == [True]
     assert result["prikket"].dtype == bool
     assert list(result.columns) == ["periode", "prikket"]
-
-
-def test_sql_contract_accepts_one_select_and_rejects_binds_or_multiple_statements():
-    assert validate_select("SELECT 1 FROM dual;") == "SELECT 1 FROM dual"
-    with pytest.raises(ValueError, match="bind"):
-        validate_select("SELECT :period FROM dual")
-    with pytest.raises(ValueError, match="bind"):
-        validate_select("SELECT :1 FROM dual")
-    with pytest.raises(ValueError, match="FOR UPDATE"):
-        validate_select("SELECT 1 FROM dual FOR UPDATE")
-    with pytest.raises(ValueError, match="nøyaktig én"):
-        validate_select("SELECT 1 FROM dual; DELETE FROM tabell")
-    assert validate_select("SELECT ';' AS value FROM dual; -- trailing") == (
-        "SELECT ';' AS value FROM dual"
-    )
-    assert validate_select("WITH c AS (SELECT 1 value FROM dual) SELECT value FROM c").startswith(
-        "WITH"
-    )
 
 
 def test_metadata_tags_are_order_independent_and_multiline():
