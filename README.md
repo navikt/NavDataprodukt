@@ -21,7 +21,7 @@ uv run statistikkbank aggregat prikking --config eksempel/konfigurasjon.yml \
 
 Relativ sti i YAML-filen og CSV-mappene regnes fra mappen der konfigurasjonsfilen ligger. `--dry-run` viser planlagte handlinger uten å skrive resultatfiler eller endre databasen.
 
-Prikking er foreløpig en mock: resultatet får en boolsk `prikket`-kolonne med verdien `True`. Selve R-integrasjonen er ikke aktivert ennå.
+Prikking er foreløpig deaktivert: resultatet får en boolsk `prikket`-kolonne med verdien `True`. R-integrasjonen er klargjort, men kjøres ikke ennå.
 
 ## Oracle-miljø
 

@@ -11,7 +11,7 @@ from statistikkbank.oracle import (
     parse_metadata,
     write_result,
 )
-from statistikkbank.prikking import prikking
+from statistikkbank.prikking import prikking_r_ikke_i_bruk
 from statistikkbank.lokal import apply_incremental
 
 
@@ -53,9 +53,16 @@ def test_resolve_env_reference(monkeypatch):
     assert resolve_secret("env://TEST_PASSWORD", password=True) == "secret"
 
 
-def test_mock_prikking_adds_boolean_column_and_preserves_input_dtypes():
+def test_prikking_wrapper_adds_boolean_column_and_preserves_input_dtypes():
     data = pd.DataFrame({"periode": pd.Series([202501], dtype="int64")})
-    result = prikking(data)
+    result = prikking_r_ikke_i_bruk(
+        data,
+        periode="periode",
+        formula="~ periode",
+        tallKol="antall",
+        prikking=True,
+        saerskilt=False,
+    )
     assert result["periode"].dtype == data["periode"].dtype
     assert result["prikket"].tolist() == [True]
     assert result["prikket"].dtype == bool
@@ -109,7 +116,7 @@ def test_csv_latest_period_mode_writes_only_the_latest_period_when_empty():
     assert result["periode"].tolist() == [202502]
 
 
-def test_csv_pipeline_writes_mock_result_without_database(tmp_path):
+def test_csv_pipeline_writes_marked_result_without_database(tmp_path):
     config = _configuration()
     input_directory = tmp_path / "inputs"
     output_directory = tmp_path / "outputs"

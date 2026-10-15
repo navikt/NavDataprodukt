@@ -8,7 +8,7 @@ import pandas as pd
 
 from statistikkbank import lokal, oracle
 from statistikkbank.config import Configuration, SmallAggregate, resolve_secret
-from statistikkbank.prikking import prikking as run_mock
+from statistikkbank.prikking import prikking
 
 LOGGER = logging.getLogger(__name__)
 
@@ -112,7 +112,14 @@ def _process_aggregate(
     if connection is not None:
         oracle.read_metadata(connection, configuration.connection.schema_name, aggregate)
 
-    result = run_mock(data)
+    result = prikking(
+        data,
+        periode=aggregate.periodisering,
+        formula=aggregate.formula,
+        tallKol=aggregate.tallkolonne.kolonne,
+        prikking=aggregate.prikking,
+        saerskilt=aggregate.saerskilt,
+    )
     result = result[[*data.columns, "prikket"]]
     _write_output(
         configuration,

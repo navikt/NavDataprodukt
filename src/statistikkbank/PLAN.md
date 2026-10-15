@@ -26,7 +26,7 @@ Use oracledb, ppy2 and pandas. All orchestration and interaction with the databa
 9. **Schema compatibility:** Use `dba_tables`, `dba_columns`, `dba_tab_comments`, and `dba_col_comments`; all database users in the target environment may read these views. Fail for all schema differences; never create, alter, remove, or narrow columns.
 10. **Metadata:** Tags may appear in any order and values may span lines until the next tag. Escaping is not supported. Duplicate tags are invalid. Metadata is not required in local CSV mode.
 11. **Local CSV mode:** Database and CSV input/output can be selected independently. Both input and output CSV files are named `{tabell}.csv` and are distinguished by their input and output directories. OBT source tables are referenced only inside the SQL query. Existing output files are overwritten. `--dry-run` performs no writes and prints what would have happened.
-12. **R mock boundary:** The mock returns the input dataframe with one new Boolean column, `prikket`, set to `True`; all input dtypes are preserved. Persist only the input columns and `prikket`. The real R script will be sourced directly rather than loaded as an installed R package.
+12. **R boundary:** `prikking` currently returns the input dataframe with one new Boolean column, `prikket`, set to `True`; all input dtypes are preserved. Persist only the input columns and `prikket`. The prepared R function sources the script directly rather than loading it as an installed R package.
 13. **Language and errors:** CLI help and output, configuration validation, logs, documentation, and other user-facing errors must be in Norwegian. Exit with `0` for success, `2` for CLI or configuration errors, and `1` for operational failures.
 14. **Container:** Use an Ubuntu base image and install Python and R. Defer a Chainguard-based image.
 15. **Integration tests:** Tests may require Docker and use a fixed host port. CI will not run these tests in parallel.
@@ -189,7 +189,7 @@ R/ # Remember to include the R files in the package!
 
 ## R integration
 
-The real R invocation may be prepared, but do not call it yet. Source the script directly:
+The application calls `prikking`, which returns a marked dataframe before starting R. `_run_r_prikking` prepares the disabled R invocation and sources the script directly:
 ```python
 # Initialize R bridge
 pandas2ri.activate()
@@ -209,8 +209,8 @@ for sub in df[periode].unique():
         saerskilt = config["saerskilt"]
     )
 
-    # Convert R result back to pandas
-    df_result = pandas2ri.rpy2py(r_result)
+    # The R function returns both the aggregate and quality-check data frames.
+    df_result = pandas2ri.rpy2py(r_result.rx2("smalt_aggregat"))
 
     # TODO: Clarify whether run information should be stored separately.
     # TODO: Clarify how to store metadata in the database.

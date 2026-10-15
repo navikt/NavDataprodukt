@@ -30,6 +30,6 @@ Uten denne miljøvariabelen administrerer `test/conftest.py` Oracle-testcontaine
 
 ## Pakking og container
 
-`Dockerfile` bygger en Ubuntu-basert runtime med Python og R. R-skriptet i `R/` pakkes med prosjektet; Python-koden bruker foreløpig mock-funksjonen i `statistikkbank.prikking`.
+`Dockerfile` bygger en Ubuntu-basert runtime med Python og R. R-skriptet i `R/` pakkes med prosjektet; `prikking` returnerer foreløpig et markert datasett uten å starte R.
 
 Databaseprofilene `DWHP`, `DWHQ`, `DWHU` og `DWHR` har plassholderverdier i `config.py` og må konfigureres før produksjonsbruk.

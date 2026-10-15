@@ -1,6 +1,6 @@
 # Lokalt eksempel
 
-Dette eksemplet kjører hele dataflyten lokalt uten Oracle eller tilgang til hemmeligheter. `inputs/` inneholder de to kildedatafilene. Resultatene i `outputs/` viser forventet format fra den nåværende mocken for prikking.
+Dette eksemplet kjører hele dataflyten lokalt uten Oracle eller tilgang til hemmeligheter. `inputs/` inneholder de to kildedatafilene. Resultatene i `outputs/` viser formatet fra den foreløpige markeringen for prikking.
 
 Fra prosjektroten kjører du:
 
