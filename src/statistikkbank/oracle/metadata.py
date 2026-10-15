@@ -13,6 +13,7 @@ LOGGER = logging.getLogger(__name__)
 def read_metadata(
     connection: oracledb.Connection, schema: str, aggregate: SmallAggregate
 ) -> dict[str, str]:
+    """Fyller manglende aggregatmetadata fra Oracle-kommentarer."""
     with connection.cursor() as cursor:
         cursor.execute(
             "SELECT comments FROM dba_tab_comments WHERE owner = :owner "
@@ -56,6 +57,7 @@ def read_metadata(
 
 
 def parse_metadata(comment: str | None) -> dict[str, str]:
+    """Parser navne- og beskrivelsestagger fra en databasekommentar."""
     if not comment:
         return {}
     matches = list(re.finditer(r"#(NAVN(?:_EN)?|BESKRIVELSE(?:_EN)?)\b", comment, re.I))

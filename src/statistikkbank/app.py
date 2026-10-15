@@ -22,6 +22,7 @@ def run(
     output_directory: Path | None = None,
     dry_run: bool = False,
 ) -> None:
+    """Kjører valgte aggregater fra valgt kilde til valgt mål."""
     aggregates = _select_aggregates(configuration, selected_tables)
     connection = _connect_if_needed(
         configuration,
@@ -48,6 +49,7 @@ def run(
 def _select_aggregates(
     configuration: Configuration, selected_tables: list[str] | None
 ) -> list[SmallAggregate]:
+    """Velger alle aggregater eller kontrollerer eksplisitte tabellvalg."""
     if not selected_tables:
         return configuration.smale_aggregater
 
@@ -70,6 +72,7 @@ def _connect_if_needed(
     output_directory: Path | None,
     dry_run: bool,
 ) -> oracledb.Connection | None:
+    """Oppretter Oracle-tilkobling bare når kilden eller målet trenger den."""
     database_input = input_directory is None
     database_output = output_directory is None
     if not database_input and (not database_output or dry_run):
@@ -95,6 +98,7 @@ def _process_aggregate(
     output_directory: Path | None,
     dry_run: bool,
 ) -> None:
+    """Leser, prikker og lagrer ett småaggregat."""
     LOGGER.info("Behandler småaggregatet %s.", aggregate.tabell)
     data, source_types = _read_input(
         aggregate,
@@ -133,6 +137,7 @@ def _read_input(
     *,
     input_directory: Path | None,
 ) -> tuple[pd.DataFrame, dict[str, str]]:
+    """Leser aggregatdata fra CSV eller Oracle."""
     if input_directory is not None:
         directory = _resolve_directory(input_directory, config_directory)
         return lokal.read_csv(directory, aggregate), {}
@@ -158,6 +163,7 @@ def _write_output(
     config_directory: Path,
     dry_run: bool,
 ) -> None:
+    """Sender resultatet til CSV eller Oracle."""
     if output_directory is not None:
         _write_csv(
             result,
@@ -185,6 +191,7 @@ def _write_csv(
     *,
     dry_run: bool,
 ) -> None:
+    """Skriver resultatet til aggregatets CSV-fil."""
     directory = _resolve_directory(output_directory, config_directory)
     lokal.write_csv(result, directory, aggregate, dry_run=dry_run)
 
@@ -198,6 +205,7 @@ def _write_database(
     *,
     dry_run: bool,
 ) -> None:
+    """Validerer og skriver resultatet til Oracle."""
     schema = configuration.connection.schema_name
     if connection is None:
         if not dry_run:
@@ -221,6 +229,7 @@ def _write_database(
 
 
 def _resolve_directory(directory: Path, config_directory: Path) -> Path:
+    """Slår opp en mappebane relativt til konfigurasjonsfilen."""
     resolved = directory.expanduser()
     if resolved.is_absolute():
         return resolved.resolve()

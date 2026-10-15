@@ -24,6 +24,7 @@ def _run_r_prikking(
     prikking: bool,
     saerskilt: bool,
 ) -> pd.DataFrame:
+    """Kjører og samler R-resultater per periode når integrasjonen aktiveres."""
     if periode not in data.columns:
         raise ValueError(f"Periodekolonnen {periode} finnes ikke i datasettet.")
 
@@ -59,12 +60,14 @@ def _run_r_prikking(
 
 
 def _result_with_prikket(data: pd.DataFrame) -> pd.DataFrame:
+    """Legger til den foreløpige boolske prikkingmarkøren."""
     result = data.copy()
     result["prikket"] = pd.Series(True, index=result.index, dtype=bool)
     return result
 
 
 def _r_script_path() -> Path:
+    """Finner den pakkede dvh_prikking.R-filen."""
     module_path = Path(__file__).resolve()
     candidates = (
         module_path.parent / "R" / "dvh_prikking.R",

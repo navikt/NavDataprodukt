@@ -6,6 +6,7 @@ from statistikkbank.config import SmallAggregate
 
 
 def read_csv(directory: Path, aggregate: SmallAggregate) -> pd.DataFrame:
+    """Leser og validerer aggregatets CSV-inndata."""
     path = directory / f"{aggregate.tabell}.csv"
     try:
         frame = pd.read_csv(path)
@@ -18,6 +19,7 @@ def read_csv(directory: Path, aggregate: SmallAggregate) -> pd.DataFrame:
 
 
 def validate_columns(frame: pd.DataFrame, aggregate: SmallAggregate) -> None:
+    """Kontrollerer at CSV-kolonnene stemmer med aggregatkonfigurasjonen."""
     expected = [
         variable.kolonne
         for variable in aggregate.variabler
@@ -50,6 +52,7 @@ def write_csv(
     *,
     dry_run: bool,
 ) -> None:
+    """Skriver aggregatresultatet med konfigurert inkrementell oppførsel."""
     path = directory / f"{aggregate.tabell}.csv"
     if frame.empty:
         print(f"Ingen rader for {aggregate.tabell}; CSV-filen endres ikke.")
@@ -71,6 +74,7 @@ def write_csv(
 def apply_incremental(
     existing: pd.DataFrame, result: pd.DataFrame, aggregate: SmallAggregate
 ) -> pd.DataFrame:
+    """Beregner hvilke perioder som skal beholdes eller erstattes."""
     mode = aggregate.inkrementell
     if mode == "overskriv_alt":
         return result.copy()

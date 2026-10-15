@@ -36,6 +36,7 @@ class DatabaseConnection(StrictModel):
     @field_validator("database")
     @classmethod
     def validate_database(cls, value: str) -> str:
+        """Kontrollerer at databasenavnet viser til en støttet profil."""
         if value not in DATABASE_PROFILES:
             raise ValueError("database må være DWHP, DWHQ, DWHU eller DWHR")
         return value
@@ -43,11 +44,13 @@ class DatabaseConnection(StrictModel):
     @field_validator("schema_name")
     @classmethod
     def validate_schema_name(cls, value: str) -> str:
+        """Validerer og normaliserer Oracle-skjemaet."""
         return validate_identifier(value, "schema")
 
     @field_validator("user")
     @classmethod
     def validate_user(cls, value: str) -> str:
+        """Avviser tomme databasebrukernavn."""
         if not value.strip():
             raise ValueError("user kan ikke være tom")
         return value
@@ -55,6 +58,7 @@ class DatabaseConnection(StrictModel):
     @field_validator("password")
     @classmethod
     def require_password_reference(cls, value: str) -> str:
+        """Krever en støttet hemmelighetsreferanse for passordet."""
         if "://" not in value:
             raise ValueError("password må være en hemmelighetsreferanse")
         if urlsplit(value).scheme not in {"env", "terminal", "gsm"}:
@@ -72,11 +76,13 @@ class Variable(StrictModel):
     @field_validator("navn", "navn_en", "beskrivelse", "beskrivelse_en", mode="before")
     @classmethod
     def normalize_metadata(cls, value: Any) -> Any:
+        """Gjør tomme metadatafelt om til manglende verdier."""
         return value.strip() or None if isinstance(value, str) else value
 
     @field_validator("kolonne")
     @classmethod
     def validate_column(cls, value: str) -> str:
+        """Validerer og normaliserer variabelnavnet."""
         return validate_identifier(value, "kolonne")
 
 
@@ -98,16 +104,19 @@ class SmallAggregate(StrictModel):
     @field_validator("navn", "navn_en", "beskrivelse", "beskrivelse_en", mode="before")
     @classmethod
     def normalize_metadata(cls, value: Any) -> Any:
+        """Gjør tomme metadatafelt om til manglende verdier."""
         return value.strip() or None if isinstance(value, str) else value
 
     @field_validator("tabell", "periodisering")
     @classmethod
     def validate_identifiers(cls, value: str, info: Any) -> str:
+        """Validerer og normaliserer tabell- og periodekolonnenavn."""
         return validate_identifier(value, info.field_name)
 
     @field_validator("inkrementell")
     @classmethod
     def validate_incremental_mode(cls, value: str) -> str:
+        """Kontrollerer at inkrementell modus er støttet."""
         allowed = {"overskriv_ikke", "overskriv_alt", "overskriv_siste_periode"}
         if value not in allowed:
             raise ValueError(f"inkrementell må være en av {', '.join(sorted(allowed))}")
@@ -116,6 +125,7 @@ class SmallAggregate(StrictModel):
     @field_validator("sporring_sql")
     @classmethod
     def validate_sql_path(cls, value: str) -> str:
+        """Krever en SQL-filbane."""
         if not value.strip():
             raise ValueError("sporring_sql kan ikke være tom")
         return value
@@ -123,6 +133,7 @@ class SmallAggregate(StrictModel):
     @field_validator("formula")
     @classmethod
     def validate_formula(cls, value: str) -> str:
+        """Krever en ikke-tom R-formel."""
         if not value.strip():
             raise ValueError("formula kan ikke være tom")
         return value
@@ -130,12 +141,14 @@ class SmallAggregate(StrictModel):
     @field_validator("variabler")
     @classmethod
     def validate_variables(cls, value: list[Variable]) -> list[Variable]:
+        """Krever minst én dimensjonsvariabel."""
         if not value:
             raise ValueError("variabler må inneholde minst én variabel")
         return value
 
     @model_validator(mode="after")
     def validate_column_contract(self) -> SmallAggregate:
+        """Kontrollerer at dimensjoner og måltall har unike kolonner."""
         columns = [variable.kolonne for variable in self.variabler]
         if len(columns) != len(set(columns)):
             raise ValueError("variabler kan ikke inneholde gjentatte kolonner")
@@ -153,6 +166,7 @@ class Configuration(StrictModel):
     @field_validator("smale_aggregater")
     @classmethod
     def validate_aggregates(cls, value: list[SmallAggregate]) -> list[SmallAggregate]:
+        """Krever aggregater med unike måltabeller."""
         if not value:
             raise ValueError("smale_aggregater må inneholde minst ett aggregat")
         tables = [item.tabell.upper() for item in value]
@@ -162,18 +176,21 @@ class Configuration(StrictModel):
 
 
 def validate_identifier(value: str, field_name: str) -> str:
+    """Kontrollerer og småbokstaverer en Oracle-identifikator."""
     if not _IDENTIFIER.fullmatch(value):
         raise ValueError(f"{field_name} må være et gyldig Oracle-navn")
     return value.lower()
 
 
 def load_configuration(config_path: str | Path) -> tuple[Configuration, Path]:
+    """Leser YAML-konfigurasjonen og returnerer modellen og filens mappe."""
     try:
         import yaml
     except ImportError as exc:
         raise ValueError("YAML-støtte mangler i installasjonen av statistikkbank.") from exc
 
     def unique_mapping(loader: yaml.SafeLoader, node: yaml.MappingNode, deep: bool = False) -> dict:
+        """Avviser gjentatte nøkler i YAML-mappinger."""
         mapping: dict[Any, Any] = {}
         for key_node, value_node in node.value:
             key = loader.construct_object(key_node, deep=deep)
@@ -217,6 +234,7 @@ def load_configuration(config_path: str | Path) -> tuple[Configuration, Path]:
 
 
 def format_validation_error(error: dict[str, Any]) -> str:
+    """Gjør en Pydantic-feil om til en kort norsk melding."""
     location = ".".join(str(item) for item in error.get("loc", ())) or "konfigurasjonen"
     if error["type"] == "extra_forbidden":
         return f"Ukjent felt: {location}."
@@ -231,6 +249,7 @@ def format_validation_error(error: dict[str, Any]) -> str:
 
 
 def resolve_secret(reference: str, *, password: bool = False) -> str:
+    """Slår opp en bokstavelig verdi eller støttet hemmelighetsreferanse."""
     if "://" not in reference:
         if password:
             raise ValueError("Passord må angis som en hemmelighetsreferanse.")

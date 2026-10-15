@@ -19,6 +19,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def connect(configuration: DatabaseConnection) -> oracledb.Connection:
+    """Kobler til konfigurert Oracle-database og velger skjema."""
     profile = DATABASE_PROFILES[configuration.database]
     connection = oracledb.connect(
         user=configuration.user,
@@ -36,6 +37,7 @@ def connect(configuration: DatabaseConnection) -> oracledb.Connection:
 def read_query(
     connection: oracledb.Connection, sql: str, aggregate: SmallAggregate
 ) -> tuple[pd.DataFrame, dict[str, str]]:
+    """Kjører aggregatspørringen og returnerer data med kildetyper."""
     with connection.cursor() as cursor:
         cursor.execute(sql.strip().removesuffix(";").rstrip())
         description = cursor.description or []
@@ -58,6 +60,7 @@ def write_result(
     *,
     dry_run: bool = False,
 ) -> None:
+    """Validerer skjemaet og skriver aggregatresultatet transaksjonelt."""
     if frame.empty:
         LOGGER.info("Ingen rader for %s; databasen endres ikke.", aggregate.tabell)
         return
@@ -97,6 +100,7 @@ def _apply_incremental_mode(
     frame: pd.DataFrame,
     period: str,
 ) -> pd.DataFrame:
+    """Sletter eller filtrerer perioder etter konfigurert inkrementell modus."""
     if aggregate.inkrementell == "overskriv_alt":
         cursor.execute(f"DELETE FROM {table}")
         return frame
@@ -120,6 +124,7 @@ def _apply_incremental_mode(
 
 
 def _insert_rows(cursor: Any, table: str, frame: pd.DataFrame) -> None:
+    """Setter inn alle datarammerader med parameteriserte verdier."""
     if frame.empty:
         return
     columns = list(frame.columns)
@@ -133,6 +138,7 @@ def _insert_rows(cursor: Any, table: str, frame: pd.DataFrame) -> None:
 
 
 def _db_value(value: Any) -> Any:
+    """Konverterer pandas- og numpy-verdier til Oracle-kompatible verdier."""
     if value is None:
         return None
     if hasattr(value, "item"):

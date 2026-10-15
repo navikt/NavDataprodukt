@@ -20,6 +20,7 @@ EXTERNAL = os.environ.get("STATISTIKKBANK_TESTENV_EXTERNAL") == "1"
 
 @pytest.fixture(scope="session")
 def oracle_container():
+    """Oppretter Oracle-containeren når en ekstern testdatabase ikke brukes."""
     if EXTERNAL:
         yield None
         return
@@ -38,6 +39,7 @@ def oracle_container():
 
 @pytest.fixture
 def oracle_connection(oracle_container):
+    """Oppretter en Oracle-tilkobling for testfunksjonen."""
     if EXTERNAL:
         dsn = oracledb.makedsn(
             "127.0.0.1", CONTAINER_PORT, service_name=ORACLE_SERVICE

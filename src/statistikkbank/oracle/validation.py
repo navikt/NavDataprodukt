@@ -10,6 +10,7 @@ from statistikkbank.config import SmallAggregate, validate_identifier
 
 
 def validate_result_columns(columns: list[str], aggregate: SmallAggregate) -> list[str]:
+    """Kontrollerer SQL-resultatkolonnene mot aggregatkonfigurasjonen."""
     expected = [variable.kolonne for variable in aggregate.variabler] + [
         aggregate.tallkolonne.kolonne
     ]
@@ -26,6 +27,7 @@ def validate_result_columns(columns: list[str], aggregate: SmallAggregate) -> li
 
 
 def oracle_type(description: tuple[Any, ...]) -> str:
+    """Oversetter Oracle-markørens kolonnetype til SQL-typeuttrykk."""
     type_name = getattr(description[1], "name", str(description[1])).upper()
     size = description[2]
     precision = description[4]
@@ -60,6 +62,7 @@ def oracle_type(description: tuple[Any, ...]) -> str:
 def table_columns(
     connection: oracledb.Connection, schema: str, table: str
 ) -> dict[str, tuple[str, int | None, int | None, int | None]]:
+    """Henter kolonnenavn og datatypeinformasjon for en Oracle-tabell."""
     with connection.cursor() as cursor:
         cursor.execute(
             "SELECT column_name, data_type, data_length, data_precision, data_scale "
@@ -74,6 +77,7 @@ def table_columns(
 
 
 def table_exists(connection: oracledb.Connection, schema: str, table: str) -> bool:
+    """Kontrollerer om en Oracle-tabell finnes i angitt skjema."""
     with connection.cursor() as cursor:
         cursor.execute(
             "SELECT 1 FROM dba_tables WHERE owner = :owner AND table_name = :table_name",
@@ -90,6 +94,7 @@ def check_schema(
     frame: pd.DataFrame,
     source_types: dict[str, str],
 ) -> None:
+    """Avviser manglende, uventede eller inkompatible tabellkolonner."""
     table = validate_identifier(aggregate.tabell, "tabell")
     owner = validate_identifier(schema, "schema")
     expected = {
@@ -127,6 +132,7 @@ def check_schema(
 
 
 def pandas_type(series: pd.Series) -> str:
+    """Utleder en passende Oracle-type fra en pandas-serie."""
     if pd.api.types.is_bool_dtype(series.dtype):
         return "NUMBER(1)"
     if pd.api.types.is_integer_dtype(series.dtype):
@@ -141,9 +147,11 @@ def pandas_type(series: pd.Series) -> str:
 def compatible_type(
     expected: str, actual: tuple[str, int | None, int | None, int | None]
 ) -> bool:
+    """Kontrollerer om faktisk Oracle-kolonnedefinisjon rommer forventet type."""
     actual_type, actual_length, actual_precision, actual_scale = actual
 
     def family(value: str) -> str:
+        """Mapper SQL-typer til sammenlignbare datatypefamilier."""
         if "NUMBER" in value or "FLOAT" in value or "INTEGER" in value:
             return "NUMBER"
         if "CHAR" in value:

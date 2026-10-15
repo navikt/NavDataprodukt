@@ -17,6 +17,7 @@ LOG_LEVELS = ("DEBUG", "INFO", "WARN", "ERROR")
 
 class NorskHelpFormatter(argparse.HelpFormatter):
     def _format_usage(self, usage, actions, groups, prefix):
+        """Lokaliserer hjelpetekstens brukslinje."""
         return super()._format_usage(usage, actions, groups, prefix).replace(
             "usage:", "bruk:", 1
         )
@@ -24,6 +25,7 @@ class NorskHelpFormatter(argparse.HelpFormatter):
 
 class NorskArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
+        """Oppretter en parser med norske hjelpetekster og feilmeldinger."""
         kwargs.setdefault("add_help", False)
         kwargs.setdefault("formatter_class", NorskHelpFormatter)
         super().__init__(*args, **kwargs)
@@ -31,6 +33,7 @@ class NorskArgumentParser(argparse.ArgumentParser):
         self._optionals.title = "valg"
 
     def error(self, message: str) -> None:
+        """Viser kommandolinjefeil på norsk og avslutter med status 2."""
         if message.startswith("invalid choice:"):
             message = "Ugyldig valg."
         elif message.startswith("the following arguments are required:"):
@@ -41,10 +44,12 @@ class NorskArgumentParser(argparse.ArgumentParser):
         self.exit(2, f"{self.prog}: FEIL: {message}\n")
 
     def format_usage(self) -> str:
+        """Returnerer lokaliserte bruksinstruksjoner."""
         return super().format_usage().replace("usage:", "bruk:", 1)
 
 
 def _add_logging_options(parser: argparse.ArgumentParser) -> None:
+    """Legger til flagg for loggnivå og detaljert visning."""
     parser.add_argument(
         "--log-level",
         choices=LOG_LEVELS,
@@ -60,6 +65,7 @@ def _add_logging_options(parser: argparse.ArgumentParser) -> None:
 
 
 def _add_help_option(parser: argparse.ArgumentParser) -> None:
+    """Legger til en norsk hjelpetekst for parseren."""
     parser.add_argument(
         "-h", "--help",
         action="help",
@@ -68,6 +74,7 @@ def _add_help_option(parser: argparse.ArgumentParser) -> None:
 
 
 def _add_aggregate_options(parser: argparse.ArgumentParser) -> None:
+    """Legger til valg for konfigurasjon, filer og aggregater."""
     parser.add_argument(
         "aggregater",
         nargs="*",
@@ -94,6 +101,7 @@ def _add_aggregate_options(parser: argparse.ArgumentParser) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Bygger kommandolinjens underkommandoer og argumenter."""
     parser = NorskArgumentParser(
         prog="statistikkbank",
         description="Lag og vedlikehold småaggregater for statistikkbanken.",
@@ -134,6 +142,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Tolker argumenter, kjører valgt kommando og håndterer feil."""
     parser = build_parser()
     args = parser.parse_args()
     if args.command == "testenv":
@@ -174,6 +183,7 @@ def main() -> None:
 
 
 def _run_testenv(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
+    """Utfører valgt testmiljøkommando."""
     from statistikkbank import testenv
 
     try:
@@ -200,6 +210,7 @@ def _run_testenv(args: argparse.Namespace, parser: argparse.ArgumentParser) -> N
 
 
 def _report_error(message: str, *, debug: bool) -> None:
+    """Viser en norsk feilmelding og eventuelle feilsøkingsdetaljer."""
     print(f"FEIL: {message}", file=sys.stderr)
     if debug:
         logging.exception("Detaljer for feilen:")

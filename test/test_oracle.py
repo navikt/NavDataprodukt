@@ -7,6 +7,7 @@ from statistikkbank.oracle import write_result
 
 
 def test_write_result_appends_only_new_periods(oracle_connection):
+    """Sikrer at Oracle-skriving legger til nye perioder uten duplikater."""
     table = f"sb_test_{uuid4().hex[:12]}"
     aggregate = SmallAggregate.model_validate(
         {

@@ -32,6 +32,7 @@ class TestEnvironmentError(Exception):
 
 
 def setup() -> None:
+    """Starter eller gjenbruker det administrerte Oracle-testmiljøet."""
     client = _docker_client()
     container = _get_named_container(client)
     if container is not None:
@@ -93,6 +94,7 @@ def setup() -> None:
 
 
 def teardown() -> None:
+    """Stopper og fjerner bare den administrerte testcontaineren."""
     client = _docker_client()
     container = _get_named_container(client)
     if container is None:
@@ -109,6 +111,7 @@ def teardown() -> None:
 
 
 def run_pytest(arguments: Sequence[str]) -> int:
+    """Kontrollerer testmiljøet og kjører pytest med videresendte argumenter."""
     client = _docker_client()
     container = _get_named_container(client)
     if container is None:
@@ -131,6 +134,7 @@ def run_pytest(arguments: Sequence[str]) -> int:
 
 
 def _docker_client():
+    """Oppretter en Docker-klient og kontrollerer at daemonen svarer."""
     try:
         client = docker.from_env()
         client.ping()
@@ -143,6 +147,7 @@ def _docker_client():
 
 
 def _get_named_container(client):
+    """Henter den faste testcontaineren hvis den finnes."""
     try:
         return client.containers.get(CONTAINER_NAME)
     except NotFound:
@@ -152,6 +157,7 @@ def _get_named_container(client):
 
 
 def _verify_managed(container) -> None:
+    """Avviser containere som ikke samsvarer med testmiljøets innstillinger."""
     labels = container.attrs.get("Config", {}).get("Labels", {}) or {}
     image = container.attrs.get("Config", {}).get("Image")
     environment = container.attrs.get("Config", {}).get("Env", []) or []
@@ -178,6 +184,7 @@ def _verify_managed(container) -> None:
 
 
 def _wait_ready(timeout: int = READY_TIMEOUT) -> None:
+    """Venter på at Oracle skal godta tilkoblinger på den faste porten."""
     deadline = time.monotonic() + timeout
     last_error: Exception | None = None
     while time.monotonic() < deadline:

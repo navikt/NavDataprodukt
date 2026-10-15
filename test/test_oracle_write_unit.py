@@ -6,23 +6,29 @@ from statistikkbank.oracle import write_result
 
 class FakeCursor:
     def __init__(self, connection):
+        """Oppretter en cursor som registrerer databasekall."""
         self.connection = connection
         self.query = ""
 
     def __enter__(self):
+        """Støtter bruk av cursoren som context manager."""
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        """Avslutter cursorens context uten å undertrykke feil."""
         return False
 
     def execute(self, query, **kwargs):
+        """Registrerer SQL-spørringen og dens bind-parametere."""
         self.query = query
         self.connection.queries.append((query, kwargs))
 
     def fetchone(self):
+        """Returnerer en rad for metadata- og tabelloppslag."""
         return (1,)
 
     def fetchall(self):
+        """Returnerer syntetiske kolonne- eller periodeverdier."""
         if "FROM dba_columns" in self.query:
             return [
                 ("PERIODE", "NUMBER", 22, 38, 0),
@@ -33,27 +39,33 @@ class FakeCursor:
         return [(202502,)]
 
     def executemany(self, query, rows):
+        """Registrerer SQL for innsetting og alle rader."""
         self.connection.inserted = (query, rows)
 
 
 class FakeConnection:
     def __init__(self):
+        """Oppretter en falsk Oracle-tilkobling med transaksjonstellere."""
         self.queries = []
         self.inserted = None
         self.commits = 0
         self.rollbacks = 0
 
     def cursor(self):
+        """Returnerer en cursor knyttet til denne tilkoblingen."""
         return FakeCursor(self)
 
     def commit(self):
+        """Teller transaksjonsbekreftelser."""
         self.commits += 1
 
     def rollback(self):
+        """Teller transaksjonstilbakerullinger."""
         self.rollbacks += 1
 
 
 def test_write_result_inserts_only_new_periods_in_one_transaction():
+    """Sikrer at kun nye perioder settes inn i én transaksjon."""
     connection = FakeConnection()
     aggregate = SmallAggregate.model_validate(
         {
