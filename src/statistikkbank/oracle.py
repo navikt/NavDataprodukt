@@ -238,44 +238,62 @@ def write_result(
         LOGGER.info("Ville skrevet %d rader til %s.%s.", len(frame), schema, aggregate.tabell)
         return
     table = f"{validate_identifier(schema, 'schema')}.{validate_identifier(aggregate.tabell, 'tabell')}"
-    columns = list(frame.columns)
     period = aggregate.periodisering.lower()
     if period not in frame.columns:
         raise ValueError(f"Periodekolonnen {aggregate.periodisering} mangler i resultatet.")
+
     try:
         with connection.cursor() as cursor:
-            if aggregate.inkrementell == "overskriv_alt":
-                cursor.execute(f"DELETE FROM {table}")
-                to_insert = frame
-            elif aggregate.inkrementell == "overskriv_siste_periode":
-                latest = frame[period].max()
-                cursor.execute(
-                    f"DELETE FROM {table} WHERE {period} = :period", period=latest
-                )
-                to_insert = frame[frame[period] == latest]
-            else:
-                cursor.execute(f"SELECT DISTINCT {period} FROM {table}")
-                existing = {row[0] for row in cursor.fetchall()}
-                incoming = set(frame[period].dropna().tolist())
-                duplicates = incoming & existing
-                if duplicates:
-                    LOGGER.warning(
-                        "Periodene %s finnes allerede i %s og hoppes over.",
-                        ", ".join(map(str, sorted(duplicates, key=str))),
-                        aggregate.tabell,
-                    )
-                to_insert = frame[~frame[period].isin(existing)]
-            if not to_insert.empty:
-                names = ", ".join(validate_identifier(name, "kolonne") for name in columns)
-                binds = ", ".join(f":{index + 1}" for index in range(len(columns)))
-                cursor.executemany(
-                    f"INSERT INTO {table} ({names}) VALUES ({binds})",
-                    [tuple(_db_value(value) for value in row) for row in to_insert.itertuples(index=False, name=None)],
-                )
+            to_insert = _apply_incremental_mode(
+                cursor, table, aggregate, frame, period
+            )
+            _insert_rows(cursor, table, to_insert)
         connection.commit()
     except Exception:
         connection.rollback()
         raise
+
+
+def _apply_incremental_mode(
+    cursor: Any,
+    table: str,
+    aggregate: SmallAggregate,
+    frame: pd.DataFrame,
+    period: str,
+) -> pd.DataFrame:
+    if aggregate.inkrementell == "overskriv_alt":
+        cursor.execute(f"DELETE FROM {table}")
+        return frame
+
+    if aggregate.inkrementell == "overskriv_siste_periode":
+        latest = frame[period].max()
+        cursor.execute(f"DELETE FROM {table} WHERE {period} = :period", period=latest)
+        return frame[frame[period] == latest]
+
+    cursor.execute(f"SELECT DISTINCT {period} FROM {table}")
+    existing = {row[0] for row in cursor.fetchall()}
+    incoming = set(frame[period].dropna().tolist())
+    duplicates = incoming & existing
+    if duplicates:
+        LOGGER.warning(
+            "Periodene %s finnes allerede i %s og hoppes over.",
+            ", ".join(map(str, sorted(duplicates, key=str))),
+            aggregate.tabell,
+        )
+    return frame[~frame[period].isin(existing)]
+
+
+def _insert_rows(cursor: Any, table: str, frame: pd.DataFrame) -> None:
+    if frame.empty:
+        return
+    columns = list(frame.columns)
+    names = ", ".join(validate_identifier(name, "kolonne") for name in columns)
+    binds = ", ".join(f":{index + 1}" for index in range(len(columns)))
+    rows = [
+        tuple(_db_value(value) for value in row)
+        for row in frame.itertuples(index=False, name=None)
+    ]
+    cursor.executemany(f"INSERT INTO {table} ({names}) VALUES ({binds})", rows)
 
 
 def _db_value(value: Any) -> Any:
