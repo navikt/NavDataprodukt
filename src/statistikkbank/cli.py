@@ -81,26 +81,14 @@ def _add_aggregate_options(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--dry-run", action="store_true", help="Vis hva som ville blitt gjort uten å skrive data.")
     parser.add_argument(
-        "--input-format",
-        choices=("database", "csv"),
-        default="database",
-        help="Hvor dataene skal leses fra (standard: database).",
-    )
-    parser.add_argument(
         "--input-directory",
         type=Path,
-        help="Mappe for CSV-inndata. Relativ sti regnes fra YAML-filen.",
-    )
-    parser.add_argument(
-        "--output-format",
-        choices=("database", "csv"),
-        default="database",
-        help="Hvor resultatet skal lagres (standard: database).",
+        help="Les CSV fra denne mappen. Uten valget leses data fra Oracle.",
     )
     parser.add_argument(
         "--output-directory",
         type=Path,
-        help="Mappe for CSV-resultat. Relativ sti regnes fra YAML-filen.",
+        help="Skriv CSV til denne mappen. Uten valget skrives resultatet til Oracle.",
     )
     _add_logging_options(parser)
 
@@ -168,9 +156,7 @@ def main() -> None:
             configuration,
             config_directory,
             selected_tables=args.aggregater,
-            input_format=args.input_format,
             input_directory=args.input_directory,
-            output_format=args.output_format,
             output_directory=args.output_directory,
             dry_run=args.dry_run,
         )

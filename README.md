@@ -17,8 +17,7 @@ Eksemplet leser to CSV-filer fra `eksempel/inputs/` og skriver resultatene til `
 
 ```sh
 uv run statistikkbank aggregat prikking --config eksempel/konfigurasjon.yml \
-  --input-format csv --input-directory inputs/ \
-  --output-format csv --output-directory outputs/
+  --input-directory inputs/ --output-directory outputs/
 ```
 
 Kjør med `--dry-run` for å se planlagte endringer uten å skrive filer:
@@ -26,11 +25,10 @@ Kjør med `--dry-run` for å se planlagte endringer uten å skrive filer:
 ```sh
 uv run statistikkbank aggregat prikking --dry-run \
   --config eksempel/konfigurasjon.yml \
-  --input-format csv --input-directory inputs/ \
-  --output-format csv --output-directory outputs/
+  --input-directory inputs/ --output-directory outputs/
 ```
 
-Relativ sti i YAML-filen og CSV-mappene regnes fra mappen der konfigurasjonsfilen ligger. Eksemplets eksisterende resultatfiler overskrives fordi aggregatene bruker `overskriv_alt`. SQL-filene peker på OBT-kildetabeller, men brukes ikke ved CSV-innlesing. Bytt til databaseinnlesing når Oracle-profil, nettverk og hemmelighetsvariabler er konfigurert.
+Relativ sti i YAML-filen og CSV-mappene regnes fra mappen der konfigurasjonsfilen ligger. Å angi `--input-directory` velger CSV som kilde, og `--output-directory` velger CSV som mål; uten disse valgene brukes Oracle. Eksemplets eksisterende resultatfiler overskrives fordi aggregatene bruker `overskriv_alt`. SQL-filene peker på OBT-kildetabeller, men brukes ikke ved CSV-innlesing. Bytt til databaseinnlesing når Oracle-profil, nettverk og hemmelighetsvariabler er konfigurert.
 
 Prikking er foreløpig deaktivert: resultatet får en boolsk `prikket`-kolonne med verdien `True`. R-integrasjonen er klargjort, men kjøres ikke ennå.
 

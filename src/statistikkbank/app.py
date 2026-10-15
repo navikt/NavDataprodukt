@@ -18,17 +18,15 @@ def run(
     config_directory: Path,
     *,
     selected_tables: list[str] | None = None,
-    input_format: str = "database",
     input_directory: Path | None = None,
-    output_format: str = "database",
     output_directory: Path | None = None,
     dry_run: bool = False,
 ) -> None:
     aggregates = _select_aggregates(configuration, selected_tables)
     connection = _connect_if_needed(
         configuration,
-        input_format=input_format,
-        output_format=output_format,
+        input_directory=input_directory,
+        output_directory=output_directory,
         dry_run=dry_run,
     )
     try:
@@ -38,9 +36,7 @@ def run(
                 aggregate,
                 config_directory,
                 connection,
-                input_format=input_format,
                 input_directory=input_directory,
-                output_format=output_format,
                 output_directory=output_directory,
                 dry_run=dry_run,
             )
@@ -70,12 +66,12 @@ def _select_aggregates(
 def _connect_if_needed(
     configuration: Configuration,
     *,
-    input_format: str,
-    output_format: str,
+    input_directory: Path | None,
+    output_directory: Path | None,
     dry_run: bool,
 ) -> oracledb.Connection | None:
-    database_input = input_format == "database"
-    database_output = output_format == "database"
+    database_input = input_directory is None
+    database_output = output_directory is None
     if not database_input and (not database_output or dry_run):
         return None
 
@@ -95,9 +91,7 @@ def _process_aggregate(
     config_directory: Path,
     connection: oracledb.Connection | None,
     *,
-    input_format: str,
     input_directory: Path | None,
-    output_format: str,
     output_directory: Path | None,
     dry_run: bool,
 ) -> None:
@@ -106,7 +100,6 @@ def _process_aggregate(
         aggregate,
         config_directory,
         connection,
-        input_format=input_format,
         input_directory=input_directory,
     )
     if connection is not None:
@@ -127,7 +120,6 @@ def _process_aggregate(
         result,
         source_types,
         connection,
-        output_format=output_format,
         output_directory=output_directory,
         config_directory=config_directory,
         dry_run=dry_run,
@@ -139,12 +131,9 @@ def _read_input(
     config_directory: Path,
     connection: oracledb.Connection | None,
     *,
-    input_format: str,
     input_directory: Path | None,
 ) -> tuple[pd.DataFrame, dict[str, str]]:
-    if input_format == "csv":
-        if input_directory is None:
-            raise ValueError("Du må angi --input-directory når --input-format=csv.")
+    if input_directory is not None:
         directory = _resolve_directory(input_directory, config_directory)
         return lokal.read_csv(directory, aggregate), {}
 
@@ -165,12 +154,11 @@ def _write_output(
     source_types: dict[str, str],
     connection: oracledb.Connection | None,
     *,
-    output_format: str,
     output_directory: Path | None,
     config_directory: Path,
     dry_run: bool,
 ) -> None:
-    if output_format == "csv":
+    if output_directory is not None:
         _write_csv(
             result,
             aggregate,
@@ -192,13 +180,11 @@ def _write_output(
 def _write_csv(
     result: pd.DataFrame,
     aggregate: SmallAggregate,
-    output_directory: Path | None,
+    output_directory: Path,
     config_directory: Path,
     *,
     dry_run: bool,
 ) -> None:
-    if output_directory is None:
-        raise ValueError("Du må angi --output-directory når --output-format=csv.")
     directory = _resolve_directory(output_directory, config_directory)
     lokal.write_csv(result, directory, aggregate, dry_run=dry_run)
 

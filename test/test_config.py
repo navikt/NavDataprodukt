@@ -128,9 +128,7 @@ def test_csv_pipeline_writes_marked_result_without_database(tmp_path):
     run(
         config,
         tmp_path,
-        input_format="csv",
         input_directory=Path("inputs"),
-        output_format="csv",
         output_directory=Path("outputs"),
     )
 
