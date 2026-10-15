@@ -23,7 +23,7 @@ Use oracledb, ppy2 and pandas. All orchestration and interaction with the databa
    - `overskriv_alt` replaces all periods.
    - `overskriv_siste_periode` replaces only the maximum period present in the result.
 8. **Period values:** Periods may be integers, such as `YYYYMM`, or strings. Assume values of the chosen type are sortable.
-9. **Schema compatibility and migration:** Use `dba_tables`, `dba_columns`, `dba_tab_comments`, and `dba_col_comments`; all database users in the target environment may read these views. `migrer` may create tables and add columns. Fail for all other schema differences; never remove or narrow columns.
+9. **Schema compatibility:** Use `dba_tables`, `dba_columns`, `dba_tab_comments`, and `dba_col_comments`; all database users in the target environment may read these views. Fail for all schema differences; never create, alter, remove, or narrow columns.
 10. **Metadata:** Tags may appear in any order and values may span lines until the next tag. Escaping is not supported. Duplicate tags are invalid. Metadata is not required in local CSV mode.
 11. **Local CSV mode:** Database and CSV input/output can be selected independently. Both input and output CSV files are named `{tabell}.csv` and are distinguished by their input and output directories. OBT source tables are referenced only inside the SQL query. Existing output files are overwritten. `--dry-run` performs no writes and prints what would have happened.
 12. **R mock boundary:** The mock returns the input dataframe with one new Boolean column, `prikket`, set to `True`; all input dtypes are preserved. Persist only the input columns and `prikket`. The real R script will be sourced directly rather than loaded as an installed R package.
@@ -47,7 +47,7 @@ Outline of the program's tasks:
 
 Keep in mind that the audience is not technical. Don't expose exceptions, unless --log-level=DEBUG is specified. Show informative error messages, utilize pydantic. No unknown keys. All in Norwegian.
 
-By default, do not change the database schema. If there is a mismatch, fail. Create a "migrate" option to update the schema. This is to be able to minimize permissions of the user. Use `dba_tables` and `dba_columns` to check for compatibility.
+Do not change the database schema. If there is a mismatch, fail. Use `dba_tables` and `dba_columns` to check for compatibility.
 
 ## Configuration
 
@@ -123,7 +123,6 @@ uv tool install statistikkbank@https://github.com/navikt/NavDataprodukt.git
 # Vis hjelpetekst
 statistikkbank --help
 statistikkbank aggregat prikking --help
-statistikkbank aggregat migrer --help
 
 # Kjør prikking for hele konfigurasjon i konfigurasjon.yml
 # Kan også specifieseres med env STATISTIKKBANK_AGGREGAT_CONFIG=...
@@ -132,7 +131,6 @@ export STATISTIKKBANK_AGGREGAT_CONFIG=konfigurasjon.yml
 
 # Bare vis hva som ville skjedd
 statistikkbank aggregat prikking --dry-run
-statistikkbank aggregat migrer --dry-run
 
 # kontroller logging
 statistikkbank aggregat prikking --log-level=WARN
@@ -155,7 +153,6 @@ statistikkbank aggregat prikking \
 
 # Bare kjør noen småaggregater
 statistikkbank aggregat prikking ost_tabellnavn_beskrivende ost_en_annen_tabellnavn_beskrivende
-statistikkbank aggregat migrer ost_tabellnavn_beskrivende ost_en_annen_tabellnavn_beskrivende
 
 # Kjør disse utenfor Copilot-sandkassen for å starte og stoppe Oracle-testmiljøet
 statistikkbank testenv setup

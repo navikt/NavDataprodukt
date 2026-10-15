@@ -23,11 +23,7 @@ def run(
     output_format: str = "database",
     output_directory: Path | None = None,
     dry_run: bool = False,
-    migrate: bool = False,
 ) -> None:
-    if migrate and output_format != "database":
-        raise ValueError("Kommandoen migrer krever --output-format=database.")
-
     aggregates = _select_aggregates(configuration, selected_tables)
     connection = _connect_if_needed(
         configuration,
@@ -47,7 +43,6 @@ def run(
                 output_format=output_format,
                 output_directory=output_directory,
                 dry_run=dry_run,
-                migrate=migrate,
             )
     finally:
         if connection is not None:
@@ -105,7 +100,6 @@ def _process_aggregate(
     output_format: str,
     output_directory: Path | None,
     dry_run: bool,
-    migrate: bool,
 ) -> None:
     LOGGER.info("Behandler småaggregatet %s.", aggregate.tabell)
     data, source_types = _read_input(
@@ -130,7 +124,6 @@ def _process_aggregate(
         output_directory=output_directory,
         config_directory=config_directory,
         dry_run=dry_run,
-        migrate=migrate,
     )
 
 
@@ -169,7 +162,6 @@ def _write_output(
     output_directory: Path | None,
     config_directory: Path,
     dry_run: bool,
-    migrate: bool,
 ) -> None:
     if output_format == "csv":
         _write_csv(
@@ -187,7 +179,6 @@ def _write_output(
             source_types,
             connection,
             dry_run=dry_run,
-            migrate=migrate,
         )
 
 
@@ -213,43 +204,25 @@ def _write_database(
     connection: oracledb.Connection | None,
     *,
     dry_run: bool,
-    migrate: bool,
 ) -> None:
     schema = configuration.connection.schema_name
     if connection is None:
         if not dry_run:
             raise RuntimeError("Databasetilkobling mangler.")
-        if migrate:
-            LOGGER.info(
-                "Ville kontrollert migrering av %s.%s.", schema, aggregate.tabell
-            )
-        else:
-            LOGGER.info(
-                "Ville skrevet %d rader til %s.%s.",
-                len(result),
-                schema,
-                aggregate.tabell,
-            )
-        return
-
-    if migrate:
-        oracle.ensure_schema(
-            connection,
+        LOGGER.info(
+            "Ville skrevet %d rader til %s.%s.",
+            len(result),
             schema,
-            aggregate,
-            result,
-            source_types,
-            migrate=True,
-            dry_run=dry_run,
+            aggregate.tabell,
         )
         return
+
     oracle.write_result(
         connection,
         schema,
         aggregate,
         result,
         source_types,
-        migrate=False,
         dry_run=dry_run,
     )
 

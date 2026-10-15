@@ -43,23 +43,18 @@ def test_write_result_appends_only_new_periods(oracle_connection):
         "antall": "NUMBER(10,0)",
     }
     try:
-        from statistikkbank.oracle import ensure_schema
-
-        ensure_schema(
-            oracle_connection,
-            "SYSTEM",
-            aggregate,
-            first,
-            source_types,
-            migrate=True,
-        )
+        with oracle_connection.cursor() as cursor:
+            cursor.execute(
+                f"CREATE TABLE SYSTEM.{table} ("
+                "periode NUMBER(38,0), region VARCHAR2(4000), "
+                "antall NUMBER(38,0), prikket NUMBER(1))"
+            )
         write_result(
             oracle_connection,
             "SYSTEM",
             aggregate,
             first,
             source_types,
-            migrate=False,
         )
         write_result(
             oracle_connection,
@@ -67,7 +62,6 @@ def test_write_result_appends_only_new_periods(oracle_connection):
             aggregate,
             second,
             source_types,
-            migrate=False,
         )
         with oracle_connection.cursor() as cursor:
             cursor.execute(

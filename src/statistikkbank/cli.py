@@ -114,7 +114,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_help_option(parser)
     commands = parser.add_subparsers(dest="command", required=True)
     aggregate = commands.add_parser(
-        "aggregat", help="Kjør prikking eller migrer databaseskjema."
+        "aggregat", help="Kjør prikking for ett eller flere småaggregater."
     )
     _add_help_option(aggregate)
     aggregate_commands = aggregate.add_subparsers(dest="aggregate_command", required=True)
@@ -123,11 +123,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_help_option(suppression)
     _add_aggregate_options(suppression)
-    migration = aggregate_commands.add_parser(
-        "migrer", help="Opprett tabeller eller legg til manglende kolonner."
-    )
-    _add_help_option(migration)
-    _add_aggregate_options(migration)
 
     testenv = commands.add_parser(
         "testenv", help="Administrer Oracle-miljøet som brukes av tester."
@@ -178,7 +173,6 @@ def main() -> None:
             output_format=args.output_format,
             output_directory=args.output_directory,
             dry_run=args.dry_run,
-            migrate=args.aggregate_command == "migrer",
         )
     except ValueError as exc:
         _report_error(

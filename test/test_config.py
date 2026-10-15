@@ -154,5 +154,4 @@ def test_empty_database_result_does_not_inspect_or_mutate_connection():
         aggregate,
         pd.DataFrame(columns=["periode", "region", "antall", "prikket"]),
         {},
-        migrate=False,
     )

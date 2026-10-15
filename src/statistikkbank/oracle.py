@@ -113,36 +113,21 @@ def table_exists(connection: oracledb.Connection, schema: str, table: str) -> bo
         return cursor.fetchone() is not None
 
 
-def ensure_schema(
+def check_schema(
     connection: oracledb.Connection,
     schema: str,
     aggregate: SmallAggregate,
     frame: pd.DataFrame,
     source_types: dict[str, str],
-    *,
-    migrate: bool,
-    dry_run: bool = False,
 ) -> None:
-    if frame.empty:
-        LOGGER.info("Ingen rader for %s; databaseskjemaet endres ikke.", aggregate.tabell)
-        return
     table = validate_identifier(aggregate.tabell, "tabell")
     owner = validate_identifier(schema, "schema")
     expected = {str(column).lower(): source_types.get(str(column).lower(), pandas_type(frame[column])) for column in frame.columns}
     expected["prikket"] = "NUMBER(1)"
     if not table_exists(connection, owner, table):
-        if not migrate:
-            raise ValueError(f"Tabellen {owner}.{table} finnes ikke. Kjør kommandoen med migrer.")
-        if dry_run:
-            LOGGER.info("Ville opprettet tabellen %s.%s.", owner, table)
-            return
-        definitions = ", ".join(
-            f"{validate_identifier(name, 'kolonne')} {data_type}"
-            for name, data_type in expected.items()
+        raise ValueError(
+            f"Tabellen {owner}.{table} finnes ikke. Opprett tabellen før kjøring."
         )
-        with connection.cursor() as cursor:
-            cursor.execute(f"CREATE TABLE {owner}.{table} ({definitions})")
-        return
 
     actual = table_columns(connection, owner, table)
     missing = set(expected) - set(actual)
@@ -158,21 +143,11 @@ def ensure_schema(
         if incompatible:
             details.append(f"ulike datatyper: {', '.join(sorted(incompatible))}")
         raise ValueError(f"Skjemaet for {owner}.{table} avviker ({'; '.join(details)}).")
-    if missing and not migrate:
+    if missing:
         raise ValueError(
             f"Tabellen {owner}.{table} mangler kolonner: {', '.join(sorted(missing))}. "
-            "Kjør kommandoen med migrer."
+            "Oppdater databaseskjemaet før kjøring."
         )
-    if missing:
-        if dry_run:
-            LOGGER.info("Ville lagt til kolonnene %s i %s.%s.", ", ".join(sorted(missing)), owner, table)
-            return
-        with connection.cursor() as cursor:
-            for name in sorted(missing):
-                cursor.execute(
-                    f"ALTER TABLE {owner}.{table} ADD "
-                    f"({validate_identifier(name, 'kolonne')} {expected[name]})"
-                )
 
 
 def pandas_type(series: pd.Series) -> str:
@@ -253,15 +228,12 @@ def write_result(
     frame: pd.DataFrame,
     source_types: dict[str, str],
     *,
-    migrate: bool,
     dry_run: bool = False,
 ) -> None:
     if frame.empty:
         LOGGER.info("Ingen rader for %s; databasen endres ikke.", aggregate.tabell)
         return
-    ensure_schema(
-        connection, schema, aggregate, frame, source_types, migrate=migrate, dry_run=dry_run
-    )
+    check_schema(connection, schema, aggregate, frame, source_types)
     if dry_run:
         LOGGER.info("Ville skrevet %d rader til %s.%s.", len(frame), schema, aggregate.tabell)
         return
