@@ -1,0 +1,29 @@
+[project]
+name = "navdataprodukt"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = []
+requires-python = ">=3.14"
+dependencies = [
+    "pandas>=3.0.6",
+    "pydantic>=2.13.5",
+    "rpy2[pandas]>=3.6.5",
+]
+
+[project.scripts]
+navdataprodukt = "navdataprodukt:main"
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+exclude-newer = "14 days"
+python-downloads = "never"
+package = true
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
