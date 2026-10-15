@@ -35,3 +35,8 @@ Prikking er foreløpig deaktivert: resultatet får en boolsk `prikket`-kolonne m
 ## Oracle-miljø
 
 Kommandoer som bruker Oracle, trenger nettverkstilgang og riktige hemmeligheter. Databaseprofilenes vertsnavn og tjenester er foreløpige plassholdere og må oppdateres før bruk mot reelle miljøer.
+
+
+# Bruk av KI
+
+Dette prosjektet bruker generativ KI for å generere kode.
