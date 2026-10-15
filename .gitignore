@@ -110,3 +110,11 @@ venv.bak/
 
 input/
 output/
+
+# Tracked CSV fixtures for the documented local example.
+!eksempel/
+eksempel/**/*.csv
+!eksempel/inputs/
+!eksempel/outputs/
+!eksempel/inputs/*.csv
+!eksempel/outputs/*.csv

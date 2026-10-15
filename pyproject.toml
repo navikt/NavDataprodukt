@@ -1,7 +1,7 @@
 [project]
 name = "statistikkbank"
 version = "0.1.0"
-description = "Add your description here"
+description = "CLI for prikking av statistikkbankaggregater"
 readme = "README.md"
 authors = []
 requires-python = ">=3.14"
@@ -9,11 +9,14 @@ dependencies = [
     "oracledb>=26.0.1",
     "pandas>=3.0.6",
     "pydantic>=2.13.5",
+    "pyyaml>=6.0.3",
     "rpy2[pandas]>=3.6.5",
+    "docker>=7.1.0",
+    "google-cloud-secret-manager>=2.26.0",
 ]
 
 [project.scripts]
-statistikkbank = "statistikkbank:main"
+statistikkbank = "statistikkbank.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.12.19,<0.13.0"]
@@ -23,6 +26,9 @@ build-backend = "uv_build"
 exclude-newer = "14 days"
 python-downloads = "never"
 package = true
+
+[tool.uv.build-backend]
+wheel-include = ["R/*.R"]
 
 [dependency-groups]
 dev = [

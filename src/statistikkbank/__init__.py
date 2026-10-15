@@ -1,2 +1,1 @@
-def main() -> None:
-    print("Hello from navdataprodukt!")
+"""Verktøy for produksjon av statistikkbankaggregater."""
