@@ -1,4 +1,5 @@
 import os
+import socket
 
 import oracledb
 import pytest
@@ -22,6 +23,14 @@ EXTERNAL = os.environ.get("STATISTIKKBANK_TESTENV_EXTERNAL") == "1"
 def oracle_container():
     """Oppretter Oracle-containeren når en ekstern testdatabase ikke brukes."""
     if EXTERNAL:
+        try:
+            with socket.create_connection(("127.0.0.1", CONTAINER_PORT), timeout=2):
+                pass
+        except OSError:
+            pytest.fail(
+                "Oracle-testmiljøet svarer ikke på port 1521. "
+                "Start testdatabasen før du kjører testene."
+            )
         yield None
         return
     container = OracleDbContainer(

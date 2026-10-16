@@ -280,8 +280,7 @@ This command must:
 
 1. Set `STATISTIKKBANK_TESTENV_EXTERNAL=1` only for the pytest subprocess.
 2. Forward all arguments after `--` unchanged to pytest and return pytest's exit code.
-3. Use the Docker Python SDK to look up the fixed, labelled container and verify that its status is `running`.
-4. Check that Oracle is reachable at the configured fixed host and port before starting pytest. If the container or database is unavailable, fail with a Norwegian message instructing the user to run `statistikkbank testenv setup` outside the sandbox.
+3. Check that Oracle is reachable at the configured fixed host and port before starting pytest, without using the Docker Python SDK to support running in an agent sandbox. If Oracle is unavailable, fail with a Norwegian message instructing the user to run `statistikkbank testenv setup` outside the sandbox.
 
 When `test/conftest.py` sees `STATISTIKKBANK_TESTENV_EXTERNAL=1`, it must not instantiate or start `OracleDbContainer`. It must instead use the fixed external connection settings and fail clearly if the database cannot be reached. Without the variable, tests retain the normal self-managed `OracleDbContainer` behavior for local development and CI.
 

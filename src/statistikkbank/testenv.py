@@ -117,14 +117,6 @@ def teardown() -> None:
 
 def run_pytest(arguments: Sequence[str]) -> int:
     """Kontrollerer testmiljøet og kjører pytest med videresendte argumenter."""
-    client = _docker_client()
-    container = _get_named_container(client)
-    if container is None:
-        raise TestEnvironmentError(LOGGER_MESSAGE)
-    _verify_managed(container)
-    container.reload()
-    if container.status != "running":
-        raise TestEnvironmentError(LOGGER_MESSAGE)
     try:
         _wait_ready(timeout=5)
     except TestEnvironmentError as exc:
