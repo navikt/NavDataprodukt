@@ -193,11 +193,14 @@ def _run_testenv(args: argparse.Namespace, parser: argparse.ArgumentParser) -> N
             testenv.teardown()
         else:
             arguments = list(args.pytest_args)
-            if arguments and arguments[0] == "--":
-                arguments.pop(0)
-            if not arguments:
-                parser.error("testenv pytest krever -- etterfulgt av pytest-argumenter.")
-            raise SystemExit(testenv.run_pytest(arguments))
+            if arguments:
+                if arguments[0] == "--":
+                    arguments.pop(0)
+                else:
+                    parser.error("Argumenter til pytest må starte med --.")
+
+            pytest_exit_code = testenv.run_pytest(arguments)
+            raise SystemExit(pytest_exit_code)
     except TestEnvironmentError as exc:
         print(f"FEIL: {exc}", file=sys.stderr)
         raise SystemExit(1) from None
