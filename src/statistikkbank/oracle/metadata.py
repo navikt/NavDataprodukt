@@ -16,7 +16,7 @@ def read_metadata(
     """Fyller manglende aggregatmetadata fra Oracle-kommentarer."""
     with connection.cursor() as cursor:
         cursor.execute(
-            "SELECT comments FROM dba_tab_comments WHERE owner = :owner "
+            "SELECT comments FROM sys.dba_tab_comments WHERE owner = :owner "
             "AND table_name = :table_name",
             owner=schema.upper(),
             table_name=aggregate.tabell.upper(),
@@ -32,7 +32,7 @@ def read_metadata(
                 comments = result
             else:
                 cursor.execute(
-                    "SELECT comments FROM dba_col_comments WHERE owner = :owner "
+                    "SELECT comments FROM sys.dba_col_comments WHERE owner = :owner "
                     "AND table_name = :table_name AND column_name = :column_name",
                     owner=schema.upper(),
                     table_name=aggregate.tabell.upper(),

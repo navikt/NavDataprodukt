@@ -50,6 +50,7 @@ def setup() -> None:
         else:
             print("Det stoppede Oracle-testmiljøet er startet og klart.")
         return
+
     try:
         client.images.get(CONTAINER_IMAGE)
     except ImageNotFound:
@@ -62,6 +63,7 @@ def setup() -> None:
             ) from exc
     except DockerException as exc:
         raise TestEnvironmentError("Kunne ikke kontrollere Oracle-testbildet.") from exc
+
     try:
         container = client.containers.run(
             CONTAINER_IMAGE,
@@ -85,11 +87,14 @@ def setup() -> None:
                 f"Containernavnet {CONTAINER_NAME} er allerede i bruk av en annen container."
             ) from exc
         raise TestEnvironmentError("Kunne ikke opprette Oracle-testcontaineren.") from exc
+
     print("Oracle-testmiljøet startes. Dette kan ta noen minutter.")
     try:
         _wait_ready()
+        _grant_dictionary_access()
     except TestEnvironmentError:
         raise
+
     print("Oracle-testmiljøet er klart og fortsetter å kjøre etter at kommandoen avsluttes.")
 
 
@@ -124,6 +129,7 @@ def run_pytest(arguments: Sequence[str]) -> int:
         _wait_ready(timeout=5)
     except TestEnvironmentError as exc:
         raise TestEnvironmentError(LOGGER_MESSAGE) from exc
+
     environment = os.environ.copy()
     environment["STATISTIKKBANK_TESTENV_EXTERNAL"] = "1"
     return subprocess.run(
@@ -207,3 +213,27 @@ def _wait_ready(timeout: int = READY_TIMEOUT) -> None:
     raise TestEnvironmentError(
         "Oracle-testmiljøet svarte ikke innen tidsfristen. Kontroller Docker-logger."
     ) from last_error
+
+
+def _grant_dictionary_access() -> None:
+    """Gir testbrukeren lesetilgang til Oracle-visningene som valideringen bruker."""
+    connection = None
+    try:
+        connection = oracledb.connect(
+            user="sys",
+            password=ORACLE_PASSWORD,
+            dsn=oracledb.makedsn(
+                "127.0.0.1", CONTAINER_PORT, service_name=ORACLE_SERVICE
+            ),
+            mode=oracledb.AuthMode.SYSDBA,
+            tcp_connect_timeout=5,
+        )
+        with connection.cursor() as cursor:
+            cursor.execute("GRANT SELECT_CATALOG_ROLE TO SYSTEM")
+    except oracledb.Error as exc:
+        raise TestEnvironmentError(
+            "Kunne ikke gi SYSTEM lesetilgang til Oracle sine DBA-visninger."
+        ) from exc
+    finally:
+        if connection is not None:
+            connection.close()

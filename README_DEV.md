@@ -26,6 +26,8 @@ uv run statistikkbank testenv pytest -- test
 
 Alle argumenter etter `--` sendes uendret videre til pytest. Kommandoen kontrollerer Docker-containeren og Oracle-tilkoblingen, og setter `STATISTIKKBANK_TESTENV_EXTERNAL=1` bare for pytest-prosessen. Kjør aldri vanlige integrasjonstester med `pytest` i sandkassen.
 
+Testmiljøet gir `SYSTEM` rollen `SELECT_CATALOG_ROLE` før tester kjøres, slik at skjemavalideringen kan lese Oracle sine `DBA_`-visninger.
+
 Uten denne miljøvariabelen administrerer `test/conftest.py` Oracle-testcontaineren for den lokale utvikleren eller CI.
 
 ## Pakking og container

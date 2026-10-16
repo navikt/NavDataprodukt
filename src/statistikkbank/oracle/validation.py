@@ -66,7 +66,7 @@ def table_columns(
     with connection.cursor() as cursor:
         cursor.execute(
             "SELECT column_name, data_type, data_length, data_precision, data_scale "
-            "FROM dba_columns WHERE owner = :owner AND table_name = :table_name",
+            "FROM sys.dba_tab_columns WHERE owner = :owner AND table_name = :table_name",
             owner=schema.upper(),
             table_name=table.upper(),
         )
@@ -80,7 +80,7 @@ def table_exists(connection: oracledb.Connection, schema: str, table: str) -> bo
     """Kontrollerer om en Oracle-tabell finnes i angitt skjema."""
     with connection.cursor() as cursor:
         cursor.execute(
-            "SELECT 1 FROM dba_tables WHERE owner = :owner AND table_name = :table_name",
+            "SELECT 1 FROM sys.dba_tables WHERE owner = :owner AND table_name = :table_name",
             owner=schema.upper(),
             table_name=table.upper(),
         )
