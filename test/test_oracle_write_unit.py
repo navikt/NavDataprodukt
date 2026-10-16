@@ -29,7 +29,7 @@ class FakeCursor:
 
     def fetchall(self):
         """Returnerer syntetiske kolonne- eller periodeverdier."""
-        if "FROM dba_tab_columns" in self.query:
+        if "DBA_TAB_COLUMNS" in self.query.upper():
             return [
                 ("PERIODE", "NUMBER", 22, 38, 0),
                 ("REGION", "VARCHAR2", 4000, None, None),
