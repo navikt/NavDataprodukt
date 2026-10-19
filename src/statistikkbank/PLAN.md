@@ -166,27 +166,26 @@ statistikkbank testenv pytest -- test/test_oracle.py -k test_skriving
 
 Project layout:
 ```text
-pyproject.toml
-uv.lock
+pyproject.toml # specification av python prosjektet 
+uv.lock # lock-fil for avhengigheter
 src/
   statistikkbank/
     __init__.py
-    cli.py # argparse
-    db/
-      operations.py
-      metadata.py
-      validation.py
-    prikking.py
-    config.py  # pydantic models
-    lokal.py # csv filer fra lokal
+    cli.py # CLI argumenter
+    oracle/
+      operations.py # connect / write_result
+      metadata.py # lese metadata (e.g. kommentarer) fra DB
+      validation.py # kompatibilitet av kolonnetyper
+    prikking.py # kjør R skriptet
+    config.py # pydantic models for konfigurasjonsfilen
+    lokal.py # lesing/skriving av csv filer
     testenv.py # administrasjon av eksternt Oracle-testmiljø
-    app.py # glue code
+    app.py # syr sammen applikasjonen
 test/
-  conftest.py
+  conftest.py # start testmiljø før testene starter
   # pytest tester her
-R/ # Remember to include the R files in the package!
+R/
   dvh_prikking.R # entrypoint when python calls R
-    
 ```
 
 ## R integration

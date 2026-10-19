@@ -12,7 +12,7 @@ def prikking(
     saerskilt: bool,
 ) -> pd.DataFrame:
     """Returner foreløpig et markert datasett uten å starte R."""
-    return _result_with_prikket(data)
+    return _result_passthrough(data)
     # return _run_r_prikking(data, periode, formula, tallKol, prikking, saerskilt)
 
 
@@ -59,7 +59,7 @@ def _run_r_prikking(
     return pd.concat(all_results, ignore_index=True)
 
 
-def _result_with_prikket(data: pd.DataFrame) -> pd.DataFrame:
+def _result_passthrough(data: pd.DataFrame) -> pd.DataFrame:
     """Legger til den foreløpige boolske prikkingmarkøren."""
     result = data.copy()
     result["prikket"] = pd.Series(True, index=result.index, dtype=bool)

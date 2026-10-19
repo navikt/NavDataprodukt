@@ -1,5 +1,30 @@
 # Utviklerhåndbok
 
+## Prosjektlayout
+
+```text
+pyproject.toml # specification av python prosjektet 
+uv.lock # lock-fil for avhengigheter
+src/
+  statistikkbank/
+    __init__.py
+    cli.py # CLI argumenter
+    oracle/
+      operations.py # connect / write_result
+      metadata.py # lese metadata (e.g. kommentarer) fra DB
+      validation.py # kompatibilitet av kolonnetyper
+    prikking.py # kjør R skriptet
+    config.py # pydantic models for konfigurasjonsfilen
+    lokal.py # lesing/skriving av csv filer
+    testenv.py # administrasjon av eksternt Oracle-testmiljø
+    app.py # syr sammen applikasjonen
+test/
+  conftest.py # start testmiljø før testene starter
+  # pytest tester her
+R/
+  dvh_prikking.R # entrypoint when python calls R
+```
+
 ## Utviklingsmiljø
 
 Prosjektet bruker `uv`, Python 3.14 eller nyere, Oracle Database-driveren, pandas, Pydantic, R og rpy2.
@@ -21,17 +46,9 @@ uv run statistikkbank testenv teardown
 Inne i sandkassen kjøres tester mot det eksternt startede miljøet med:
 
 ```sh
-uv run statistikkbank testenv pytest -- test
+uv run statistikkbank testenv pytest
+# eller med argumenter:
+uv run statistikkbank testenv pytest -- -q
 ```
 
-Alle argumenter etter `--` sendes uendret videre til pytest. Kommandoen kontrollerer at Oracle svarer på port 1521 uten å bruke Docker API-et for at den kan kjøre i en agent sandbox, og setter `STATISTIKKBANK_TESTENV_EXTERNAL=1` bare for pytest-prosessen. Kjør aldri vanlige integrasjonstester med `pytest` i sandkassen.
-
-Testmiljøet gir `SYSTEM` rollen `SELECT_CATALOG_ROLE` før tester kjøres, slik at skjemavalideringen kan lese Oracle sine `DBA_`-visninger.
-
-Uten denne miljøvariabelen administrerer `test/conftest.py` Oracle-testcontaineren for den lokale utvikleren eller CI.
-
-## Pakking og container
-
-`Dockerfile` bygger en Ubuntu-basert runtime med Python og R. R-skriptet i `R/` pakkes med prosjektet; `prikking` returnerer foreløpig et markert datasett uten å starte R.
-
-Databaseprofilene `DWHP`, `DWHQ`, `DWHU` og `DWHR` har plassholderverdier i `config.py` og må konfigureres før produksjonsbruk.
+Utenfor sandkassen håndteres testmiljøet automatisk.
