@@ -1,5 +1,5 @@
 import pandas as pd
-from statistikkbank.prikking import prikking
+from statistikkprodukt.prikking import prikking
 
 
 def test_prikking_adds_boolean_column_and_preserves_input_dtypes():

@@ -1,6 +1,6 @@
-# Statistikkbank
+# Statistikkprodukt
 
-`statistikkbank` lager små statistikkaggregater og markerer rader som er behandlet av prikking. Verktøyet kan hente data fra Oracle eller lokale CSV-filer og lagre resultatet i Oracle eller CSV.
+`statistikkprodukt` lager små statistikkaggregater og markerer rader som er behandlet av prikking. Verktøyet kan hente data fra Oracle eller lokale CSV-filer og lagre resultatet i Oracle eller CSV.
 
 Denne filen er brukerdokumentasjon. [README_DEV.md](README_DEV.md) er utviklerhåndbok.
 
@@ -10,13 +10,13 @@ Installer Python 3.14 eller nyere, R og pakkene fra prosjektet:
 
 ```sh
 uv sync
-uv run statistikkbank --help
+uv run statistikkprodukt --help
 ```
 
 Kjør eksemepelet, som leser to CSV-filer fra `eksempel/inputs/` og skriver resultatene til `eksempel/outputs/`, uten Oracle-tilkobling eller hemmeligheter:
 
 ```sh
-uv run statistikkbank aggregat prikking \
+uv run statistikkprodukt aggregat prikking \
   --config eksempel/konfigurasjon.yml \
   --input-directory inputs/ \
   --output-directory outputs/

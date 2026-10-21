@@ -1,1 +1,1 @@
-"""Verktøy for produksjon av statistikkbankaggregater."""
+"""Verktøy for produksjon av statistikkproduktaggregater."""

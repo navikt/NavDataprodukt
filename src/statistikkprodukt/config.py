@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 
 class ConfigError(ValueError):
-    """Feil i konfigurasjonen av statistikkbank."""
+    """Feil i konfigurasjonen av statistikkprodukt."""
 
 
 DATABASE_PROFILES = {
@@ -175,7 +175,7 @@ def load_configuration(config_path: str | Path | None) -> tuple[Configuration, P
     """Leser YAML-konfigurasjonen og returnerer modellen og filens mappe."""
 
     if config_path is None:
-        raise ConfigError("Konfigurasjonsfilen må angis med --config eller STATISTIKKBANK_CONFIG.")
+        raise ConfigError("Konfigurasjonsfilen må angis med --config eller STATISTIKKPRODUKT_CONFIG.")
 
     import yaml
 

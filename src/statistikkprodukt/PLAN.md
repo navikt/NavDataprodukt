@@ -12,7 +12,7 @@ Use oracledb, ppy2 and pandas. All orchestration and interaction with the databa
 
 ## Implementation decisions
 
-1. **Program and package naming:** The Python distribution, import package, and executable are all named `statistikkbank`.
+1. **Program and package naming:** The Python distribution, import package, and executable are all named `statistikkprodukt`.
 2. **Configuration location:** `--config` accepts a YAML file. Resolve relative paths from the directory containing that file.
 3. **Oracle connection profiles:** Allowed values for `connection.database` are `DWHP`, `DWHQ`, `DWHU`, and `DWHR`. Use placeholder mappings for host, port, and service name for now.
 4. **Secret references:** Support the URI forms shown in the configuration example. Google Secret Manager payloads are UTF-8 strings and may contain a flat JSON object. Allow `terminal://` only when stdin is a TTY. Fail if a referenced value is missing.
@@ -30,7 +30,7 @@ Use oracledb, ppy2 and pandas. All orchestration and interaction with the databa
 13. **Language and errors:** CLI help and output, configuration validation, logs, documentation, and other user-facing errors must be in Norwegian. Exit with `0` for success, `2` for CLI or configuration errors, and `1` for operational failures.
 14. **Container:** Use an Ubuntu base image and install Python and R. Defer a Chainguard-based image.
 15. **Integration tests:** Tests may require Docker and use a fixed host port. CI will not run these tests in parallel.
-16. **Sandboxed test environment:** Copilot runs commands in a sandbox and cannot start the Oracle container itself. Provide `testenv setup` and `testenv teardown` commands that the user runs outside the sandbox. Provide a `testenv pytest -- PYTEST_ARGS` command for the agent; it sets `STATISTIKKBANK_TESTENV_EXTERNAL=1` and forwards every argument after `--` to pytest. `test/conftest.py` detects this variable and connects to the externally managed container instead of creating an `OracleDbContainer`.
+16. **Sandboxed test environment:** Copilot runs commands in a sandbox and cannot start the Oracle container itself. Provide `testenv setup` and `testenv teardown` commands that the user runs outside the sandbox. Provide a `testenv pytest -- PYTEST_ARGS` command for the agent; it sets `STATISTIKKPRODUKT_TESTENV_EXTERNAL=1` and forwards every argument after `--` to pytest. `test/conftest.py` detects this variable and connects to the externally managed container instead of creating an `OracleDbContainer`.
 
 ## Workflow
 
@@ -118,48 +118,48 @@ Example usage of the API. Use the argparse library. Keep the help text informati
 
 ```shell
 # Laste ned den nyeste versjon fra github og gjør den tilgjengelig som et program
-uv tool install statistikkbank@https://github.com/navikt/NavDataprodukt.git
+uv tool install statistikkprodukt@https://github.com/navikt/NavDataprodukt.git
 
 # Vis hjelpetekst
-statistikkbank --help
-statistikkbank aggregat prikking --help
+statistikkprodukt --help
+statistikkprodukt aggregat prikking --help
 
 # Kjør prikking for hele konfigurasjon i konfigurasjon.yml
-# Kan også specifieseres med env STATISTIKKBANK_AGGREGAT_CONFIG=...
-statistikkbank aggregat prikking --config=konfigurasjon.yml
-export STATISTIKKBANK_AGGREGAT_CONFIG=konfigurasjon.yml
+# Kan også specifieseres med env STATISTIKKPRODUKT_AGGREGAT_CONFIG=...
+statistikkprodukt aggregat prikking --config=konfigurasjon.yml
+export STATISTIKKPRODUKT_AGGREGAT_CONFIG=konfigurasjon.yml
 
 # Bare vis hva som ville skjedd
-statistikkbank aggregat prikking --dry-run
+statistikkprodukt aggregat prikking --dry-run
 
 # kontroller logging
-statistikkbank aggregat prikking --log-level=WARN
-statistikkbank aggregat prikking --verbose
+statistikkprodukt aggregat prikking --log-level=WARN
+statistikkprodukt aggregat prikking --verbose
 
 # Skriv til CSV i stedet for database (for eksempel til output/ost_tabellnavn_beskrivende.csv)
-statistikkbank aggregat prikking --output-directory=output/
+statistikkprodukt aggregat prikking --output-directory=output/
 
 # Les fra CSV i stedet for database. Filnavnet følger verdien i `tabell`,
 # for eksempel `tabell: ost_tabellnavn_beskrivende`
 # -> input/ost_tabellnavn_beskrivende.csv
-statistikkbank aggregat prikking --input-directory=input/
+statistikkprodukt aggregat prikking --input-directory=input/
 
 # Lokal innlesing og utskriving kan kombineres
-statistikkbank aggregat prikking \
+statistikkprodukt aggregat prikking \
   --input-directory=input/ --output-directory=output/
 
 # Ikke les hemmeligheter, hvis ikke det er behov for det
 
 # Bare kjør noen småaggregater
-statistikkbank aggregat prikking ost_tabellnavn_beskrivende ost_en_annen_tabellnavn_beskrivende
+statistikkprodukt aggregat prikking ost_tabellnavn_beskrivende ost_en_annen_tabellnavn_beskrivende
 
 # Kjør disse utenfor Copilot-sandkassen for å starte og stoppe Oracle-testmiljøet
-statistikkbank testenv setup
-statistikkbank testenv teardown
+statistikkprodukt testenv setup
+statistikkprodukt testenv teardown
 
 # Kjør pytest fra sandkassen mot det eksterne testmiljøet.
 # Alle argumenter etter `--` sendes uendret til pytest.
-statistikkbank testenv pytest -- test/test_oracle.py -k test_skriving
+statistikkprodukt testenv pytest -- test/test_oracle.py -k test_skriving
 ```
 
 ## Project layout
@@ -169,7 +169,7 @@ Project layout:
 pyproject.toml # specification av python prosjektet 
 uv.lock # lock-fil for avhengigheter
 src/
-  statistikkbank/
+  statistikkprodukt/
     __init__.py
     cli.py # CLI argumenter
     oracle/
@@ -248,7 +248,7 @@ oracle.with_name(CONTAINER_NAME)
 The Oracle container must be started by the user outside the Copilot sandbox before the agent runs integration tests:
 
 ```shell
-statistikkbank testenv setup
+statistikkprodukt testenv setup
 ```
 
 `testenv setup` must:
@@ -264,7 +264,7 @@ statistikkbank testenv setup
 The user removes the external environment with:
 
 ```shell
-statistikkbank testenv teardown
+statistikkprodukt testenv teardown
 ```
 
 `testenv teardown` must use the Docker SDK, stop and remove only the correctly labelled managed container, and succeed with an informative message if that container does not exist. It must fail rather than modify an unmanaged container with the same name.
@@ -272,18 +272,18 @@ statistikkbank testenv teardown
 The agent runs tests through:
 
 ```shell
-statistikkbank testenv pytest -- PYTEST_ARGS
+statistikkprodukt testenv pytest -- PYTEST_ARGS
 ```
 
 This command must:
 
-1. Set `STATISTIKKBANK_TESTENV_EXTERNAL=1` only for the pytest subprocess.
+1. Set `STATISTIKKPRODUKT_TESTENV_EXTERNAL=1` only for the pytest subprocess.
 2. Forward all arguments after `--` unchanged to pytest and return pytest's exit code.
-3. Check that Oracle is reachable at the configured fixed host and port before starting pytest, without using the Docker Python SDK to support running in an agent sandbox. If Oracle is unavailable, fail with a Norwegian message instructing the user to run `statistikkbank testenv setup` outside the sandbox.
+3. Check that Oracle is reachable at the configured fixed host and port before starting pytest, without using the Docker Python SDK to support running in an agent sandbox. If Oracle is unavailable, fail with a Norwegian message instructing the user to run `statistikkprodukt testenv setup` outside the sandbox.
 
-When `test/conftest.py` sees `STATISTIKKBANK_TESTENV_EXTERNAL=1`, it must not instantiate or start `OracleDbContainer`. It must instead use the fixed external connection settings and fail clearly if the database cannot be reached. Without the variable, tests retain the normal self-managed `OracleDbContainer` behavior for local development and CI.
+When `test/conftest.py` sees `STATISTIKKPRODUKT_TESTENV_EXTERNAL=1`, it must not instantiate or start `OracleDbContainer`. It must instead use the fixed external connection settings and fail clearly if the database cannot be reached. Without the variable, tests retain the normal self-managed `OracleDbContainer` behavior for local development and CI.
 
-Document this workflow in `.github/copilot-instructions.md` and `README_DEV.md`. Agents running inside the sandbox must use `statistikkbank testenv pytest -- ...`, never plain pytest for integration tests.
+Document this workflow in `.github/copilot-instructions.md` and `README_DEV.md`. Agents running inside the sandbox must use `statistikkprodukt testenv pytest -- ...`, never plain pytest for integration tests.
 
 ## Container and dependency updates
 

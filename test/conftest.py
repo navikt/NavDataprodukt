@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy.engine import make_url
 from testcontainers.community.oracle import OracleDbContainer
 
-from statistikkbank.testenv import (
+from statistikkprodukt.testenv import (
     CONTAINER_IMAGE,
     CONTAINER_NAME,
     CONTAINER_PORT,
@@ -16,7 +16,7 @@ from statistikkbank.testenv import (
     TZ,
 )
 
-EXTERNAL = os.environ.get("STATISTIKKBANK_TESTENV_EXTERNAL") == "1"
+EXTERNAL = os.environ.get("STATISTIKKPRODUKT_TESTENV_EXTERNAL") == "1"
 
 
 @pytest.fixture(scope="session")
@@ -60,7 +60,7 @@ def oracle_connection(oracle_container):
         except oracledb.Error as exc:
             pytest.fail(
                 "Kan ikke koble til det eksterne Oracle-testmiljøet. "
-                "Kjør 'statistikkbank testenv setup' utenfor sandkassen."
+                "Kjør 'statistikkprodukt testenv setup' utenfor sandkassen."
             )
     else:
         url = make_url(oracle_container.get_connection_url())

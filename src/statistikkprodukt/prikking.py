@@ -78,5 +78,5 @@ def _r_script_path() -> Path:
         if path.is_file():
             return path
     raise FileNotFoundError(
-        "Fant ikke R-skriptet R/dvh_prikking.R i statistikkbank-pakken."
+        "Fant ikke R-skriptet R/dvh_prikking.R i statistikkprodukt-pakken."
     )

@@ -12,9 +12,9 @@ import logging
 import oracledb
 from docker.errors import APIError, DockerException, ImageNotFound, NotFound
 
-CONTAINER_NAME = "statistikkbank-oracle-test"
+CONTAINER_NAME = "statistikkprodukt-oracle-test"
 CONTAINER_IMAGE = "gvenzl/oracle-free:23-slim-faststart"
-CONTAINER_LABEL = "no.nav.statistikkbank.testenv"
+CONTAINER_LABEL = "no.nav.statistikkprodukt.testenv"
 CONTAINER_LABEL_VALUE = "managed"
 CONTAINER_PORT = 1521
 ORACLE_USER = "system"
@@ -24,7 +24,7 @@ TZ = "Europe/Oslo"
 READY_TIMEOUT = 300
 LOGGER_MESSAGE = (
     "Oracle-testmiljøet er ikke tilgjengelig. Kjør "
-    "'statistikkbank testenv setup' utenfor sandkassen."
+    "'statistikkprodukt testenv setup' utenfor sandkassen."
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -141,7 +141,7 @@ def run_pytest(arguments: Sequence[str]) -> int:
         raise TestEnvironmentError(LOGGER_MESSAGE) from exc
 
     environment = os.environ.copy()
-    environment["STATISTIKKBANK_TESTENV_EXTERNAL"] = "1"
+    environment["STATISTIKKPRODUKT_TESTENV_EXTERNAL"] = "1"
     return subprocess.run(
         [sys.executable, "-m", "pytest", *arguments],
         env=environment,
@@ -158,7 +158,7 @@ def _docker_client():
     except DockerException as exc:
         raise TestEnvironmentError(
             "Docker er ikke tilgjengelig. Start Docker og kjør "
-            "'statistikkbank testenv setup' utenfor sandkassen."
+            "'statistikkprodukt testenv setup' utenfor sandkassen."
         ) from exc
 
 

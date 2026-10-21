@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
-from statistikkbank.app import run
+from statistikkprodukt.app import run
 from test.test_config import configuration
 
 

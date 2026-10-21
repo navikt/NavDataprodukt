@@ -6,7 +6,7 @@
 pyproject.toml # specification av python prosjektet 
 uv.lock # lock-fil for avhengigheter
 src/
-  statistikkbank/
+  statistikkprodukt/
     __init__.py
     cli.py # CLI argumenter
     oracle/
@@ -39,16 +39,16 @@ uv run pytest test/test_config.py
 Oracle-testmiljøet må administreres utenfor Copilot-sandkassen:
 
 ```sh
-uv run statistikkbank testenv setup
-uv run statistikkbank testenv teardown
+uv run statistikkprodukt testenv setup
+uv run statistikkprodukt testenv teardown
 ```
 
 Inne i sandkassen kjøres tester mot det eksternt startede miljøet med:
 
 ```sh
-uv run statistikkbank testenv pytest
+uv run statistikkprodukt testenv pytest
 # eller med argumenter:
-uv run statistikkbank testenv pytest -- -q
+uv run statistikkprodukt testenv pytest -- -q
 ```
 
 Utenfor sandkassen håndteres testmiljøet automatisk.

@@ -38,8 +38,8 @@ def _add_aggregate_options(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--config",
-        default=os.environ.get("STATISTIKKBANK_AGGREGAT_CONFIG"),
-        help="YAML-konfigurasjonsfil (standard: STATISTIKKBANK_AGGREGAT_CONFIG eller konfigurasjon.yml).",
+        default=os.environ.get("STATISTIKKPRODUKT_AGGREGAT_CONFIG"),
+        help="YAML-konfigurasjonsfil (standard: STATISTIKKPRODUKT_AGGREGAT_CONFIG eller konfigurasjon.yml).",
     )
     parser.add_argument("--dry-run", action="store_true", help="Vis hva som ville blitt gjort uten å skrive data.")
     parser.add_argument(
@@ -58,9 +58,9 @@ def _add_aggregate_options(parser: argparse.ArgumentParser) -> None:
 def build_parser() -> argparse.ArgumentParser:
     """Bygger kommandolinjens underkommandoer og argumenter."""
     parser = argparse.ArgumentParser(
-        prog="statistikkbank",
-        description="Lag og vedlikehold småaggregater for statistikkbanken.",
-        epilog="Bruk 'statistikkbank aggregat prikking --help' for flere valg.",
+        prog="statistikkprodukt",
+        description="Lag og vedlikehold småaggregater for statistikkprodukten.",
+        epilog="Bruk 'statistikkprodukt aggregat prikking --help' for flere valg.",
     )
 
     commands = parser.add_subparsers(dest="command", required=True)

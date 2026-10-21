@@ -4,9 +4,9 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from statistikkbank.app import run
-from statistikkbank.config import Configuration, resolve_secret
-from statistikkbank.oracle import (
+from statistikkprodukt.app import run
+from statistikkprodukt.config import Configuration, resolve_secret
+from statistikkprodukt.oracle import (
     compatible_type,
     parse_metadata,
     write_result,

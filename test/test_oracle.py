@@ -3,8 +3,8 @@ from uuid import uuid4
 import pandas as pd
 import pytest
 
-from statistikkbank.config import SmallAggregate
-from statistikkbank.oracle import write_result, compatible_type, parse_metadata
+from statistikkprodukt.config import SmallAggregate
+from statistikkprodukt.oracle import write_result, compatible_type, parse_metadata
 from test.test_config import configuration
 
 

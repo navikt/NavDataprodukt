@@ -1,7 +1,7 @@
 [project]
-name = "statistikkbank"
+name = "statistikkprodukt"
 version = "0.1.0"
-description = "CLI for prikking av statistikkbankaggregater"
+description = "CLI for prikking av statistikkproduktaggregater"
 readme = "README.md"
 authors = []
 requires-python = ">=3.14"
@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-statistikkbank = "statistikkbank.cli:main"
+statistikkprodukt = "statistikkprodukt.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.12.19,<0.13.0"]

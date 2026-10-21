@@ -26,5 +26,5 @@ COPY R ./R
 RUN uv sync --no-dev --no-install-project
 RUN uv sync --no-dev
 
-ENTRYPOINT ["uv", "run", "--no-sync", "statistikkbank"]
+ENTRYPOINT ["uv", "run", "--no-sync", "statistikkprodukt"]
 CMD ["--help"]

@@ -1,7 +1,7 @@
 import pandas as pd
 
-from statistikkbank.config import SmallAggregate
-from statistikkbank.oracle import write_result
+from statistikkprodukt.config import SmallAggregate
+from statistikkprodukt.oracle import write_result
 
 
 class FakeCursor:
