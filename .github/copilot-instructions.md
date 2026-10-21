@@ -5,12 +5,12 @@ Dette prosjektet leverer Python-CLI-en `statistikkprodukt`; kommando- og feilmel
 
 Kjør enhetstester sånn:
 ```sh
-statistikkprodukt testenv pytest
+uv run statistikkprodukt testenv pytest
 ```
 
 Med argumenter:
 ```sh
-statistikkprodukt testenv pytest -- -q
+uv run statistikkprodukt testenv pytest -- -q
 ```
 
 Oracle-testcontaineren må startes og stoppes utenfor sandkassen med `statistikkprodukt testenv setup` og `statistikkprodukt testenv teardown`. Ikke start Docker-containere direkte fra sandkassen.
