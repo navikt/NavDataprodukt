@@ -95,8 +95,8 @@ def check_schema(
     source_types: dict[str, str],
 ) -> None:
     """Avviser manglende, uventede eller inkompatible tabellkolonner."""
-    table = validate_identifier(aggregate.tabell, "tabell")
-    owner = validate_identifier(schema, "schema")
+    table = validate_identifier(aggregate.tabell)
+    owner = validate_identifier(schema)
     expected = {
         str(column).lower(): source_types.get(
             str(column).lower(), pandas_type(frame[column])

@@ -5,9 +5,10 @@ import socket
 import subprocess
 import sys
 import time
-from typing import Sequence
+from typing import Sequence, Any
 
 import docker
+import logging
 import oracledb
 from docker.errors import APIError, DockerException, ImageNotFound, NotFound
 
@@ -26,6 +27,7 @@ LOGGER_MESSAGE = (
     "'statistikkbank testenv setup' utenfor sandkassen."
 )
 
+LOGGER = logging.getLogger(__name__)
 
 class TestEnvironmentError(Exception):
     pass
@@ -36,36 +38,26 @@ def setup() -> None:
     client = _docker_client()
     container = _get_named_container(client)
     if container is not None:
-        _verify_managed(container)
-        was_running = container.status == "running"
-        if not was_running:
-            try:
-                container.start()
-            except APIError as exc:
-                raise TestEnvironmentError("Kunne ikke starte Oracle-testcontaineren.") from exc
-            container.reload()
-        _wait_ready()
-        if was_running:
-            print("Det administrerte Oracle-testmiljøet kjører allerede.")
-        else:
-            print("Det stoppede Oracle-testmiljøet er startet og klart.")
+        _assert_container_is_running(container)
         return
 
-    try:
-        client.images.get(CONTAINER_IMAGE)
-    except ImageNotFound:
-        print(f"Oracle-testbildet {CONTAINER_IMAGE} lastes ned.")
-        try:
-            client.images.pull(CONTAINER_IMAGE)
-        except DockerException as exc:
-            raise TestEnvironmentError(
-                "Kunne ikke hente Oracle-testbildet fra Docker-registeret."
-            ) from exc
-    except DockerException as exc:
-        raise TestEnvironmentError("Kunne ikke kontrollere Oracle-testbildet.") from exc
+    _assert_image_available(client)
 
+    _run_container(client)
+
+    LOGGER.info("Oracle-testmiljøet startes. Dette kan ta noen minutter.")
     try:
-        container = client.containers.run(
+        _wait_ready()
+        _grant_dictionary_access()
+    except TestEnvironmentError:
+        raise
+
+    LOGGER.info("Oracle-testmiljøet er klart og fortsetter å kjøre etter at kommandoen avsluttes.")
+
+
+def _run_container(client):
+    try:
+        client.containers.run(
             CONTAINER_IMAGE,
             name=CONTAINER_NAME,
             detach=True,
@@ -88,14 +80,39 @@ def setup() -> None:
             ) from exc
         raise TestEnvironmentError("Kunne ikke opprette Oracle-testcontaineren.") from exc
 
-    print("Oracle-testmiljøet startes. Dette kan ta noen minutter.")
-    try:
-        _wait_ready()
-        _grant_dictionary_access()
-    except TestEnvironmentError:
-        raise
 
-    print("Oracle-testmiljøet er klart og fortsetter å kjøre etter at kommandoen avsluttes.")
+def _assert_container_is_running(container: Any | None):
+    """Sjekker at den administrerte testcontaineren kjører, og starter den hvis den er stoppet."""
+    was_running = container.status == "running"
+    if not was_running:
+        try:
+            container.start()
+        except APIError as exc:
+            raise TestEnvironmentError("Kunne ikke starte Oracle-testcontaineren.") from exc
+        container.reload()
+
+    _wait_ready()
+
+    if was_running:
+        LOGGER.info("Det administrerte Oracle-testmiljøet kjører allerede.")
+    else:
+        LOGGER.info("Det stoppede Oracle-testmiljøet er startet og klart.")
+
+
+def _assert_image_available(client):
+    """Last ned docker image hvis det mangler"""
+    try:
+        client.images.get(CONTAINER_IMAGE)
+    except ImageNotFound:
+        LOGGER.info(f"Oracle-testbildet {CONTAINER_IMAGE} lastes ned.")
+        try:
+            client.images.pull(CONTAINER_IMAGE)
+        except DockerException as exc:
+            raise TestEnvironmentError(
+                "Kunne ikke hente Oracle-testbildet fra Docker-registeret."
+            ) from exc
+    except DockerException as exc:
+        raise TestEnvironmentError("Kunne ikke kontrollere Oracle-testbildet.") from exc
 
 
 def teardown() -> None:
@@ -103,16 +120,17 @@ def teardown() -> None:
     client = _docker_client()
     container = _get_named_container(client)
     if container is None:
-        print("Det finnes ikke noe administrert Oracle-testmiljø å fjerne.")
+        LOGGER.info("Det finnes ikke noe administrert Oracle-testmiljø å fjerne.")
         return
-    _verify_managed(container)
+
     try:
         if container.status == "running":
             container.stop(timeout=20)
         container.remove()
     except APIError as exc:
         raise TestEnvironmentError("Kunne ikke stoppe og fjerne Oracle-testmiljøet.") from exc
-    print("Oracle-testmiljøet er stoppet og fjernet.")
+
+    LOGGER.info("Oracle-testmiljøet er stoppet og fjernet.")
 
 
 def run_pytest(arguments: Sequence[str]) -> int:
@@ -154,31 +172,16 @@ def _get_named_container(client):
         raise TestEnvironmentError("Kunne ikke undersøke Docker-containerne.") from exc
 
 
-def _verify_managed(container) -> None:
-    """Avviser containere som ikke samsvarer med testmiljøets innstillinger."""
-    labels = container.attrs.get("Config", {}).get("Labels", {}) or {}
-    image = container.attrs.get("Config", {}).get("Image")
-    environment = container.attrs.get("Config", {}).get("Env", []) or []
-    environment_values = dict(item.split("=", 1) for item in environment if "=" in item)
-    bindings = container.attrs.get("HostConfig", {}).get("PortBindings", {}) or {}
-    host_ports = {
-        binding.get("HostPort")
-        for values in bindings.values()
-        for binding in (values or [])
-    }
-    if (
-        labels.get(CONTAINER_LABEL) != CONTAINER_LABEL_VALUE
-        or image != CONTAINER_IMAGE
-        or str(CONTAINER_PORT) not in host_ports
-        or environment_values.get("ORACLE_PASSWORD") != ORACLE_PASSWORD
-        or environment_values.get("TZ") != TZ
-        or environment_values.get("ORA_SDTZ") != TZ
-    ):
-        raise TestEnvironmentError(
-            f"Containeren {CONTAINER_NAME} finnes, men er ikke et kompatibelt "
-            "statistikkbank-testmiljø. Den blir ikke endret. Fjern eller gi nytt "
-            "navn til containeren manuelt, og kjør 'statistikkbank testenv setup'."
-        )
+def _connect_testenv_oracle(**kwargs) -> oracledb.Connection:
+    """Oppretter en Oracle-tilkobling til testmiljøet."""
+    return oracledb.connect(
+        user=ORACLE_USER,
+        password=ORACLE_PASSWORD,
+        dsn=oracledb.makedsn(
+            "127.0.0.1", CONTAINER_PORT, service_name=ORACLE_SERVICE
+        ),
+        **kwargs,
+    )
 
 
 def _wait_ready(timeout: int = READY_TIMEOUT) -> None:
@@ -189,19 +192,13 @@ def _wait_ready(timeout: int = READY_TIMEOUT) -> None:
         try:
             with socket.create_connection(("127.0.0.1", CONTAINER_PORT), timeout=2):
                 pass
-            connection = oracledb.connect(
-                user=ORACLE_USER,
-                password=ORACLE_PASSWORD,
-                dsn=oracledb.makedsn(
-                    "127.0.0.1", CONTAINER_PORT, service_name=ORACLE_SERVICE
-                ),
-                tcp_connect_timeout=2,
-            )
-            connection.close()
-            return
+
+            with _connect_testenv_oracle(tcp_connect_timeout=2) as connection:
+                return
         except (OSError, oracledb.Error) as exc:
             last_error = exc
             time.sleep(2)
+
     raise TestEnvironmentError(
         "Oracle-testmiljøet svarte ikke innen tidsfristen. Kontroller Docker-logger."
     ) from last_error
@@ -209,23 +206,14 @@ def _wait_ready(timeout: int = READY_TIMEOUT) -> None:
 
 def _grant_dictionary_access() -> None:
     """Gir testbrukeren lesetilgang til Oracle-visningene som valideringen bruker."""
-    connection = None
     try:
-        connection = oracledb.connect(
-            user="sys",
-            password=ORACLE_PASSWORD,
-            dsn=oracledb.makedsn(
-                "127.0.0.1", CONTAINER_PORT, service_name=ORACLE_SERVICE
-            ),
-            mode=oracledb.AuthMode.SYSDBA,
-            tcp_connect_timeout=5,
-        )
-        with connection.cursor() as cursor:
+        with _connect_testenv_oracle(
+                user="sys",
+                tcp_connect_timeout=5,
+                mode=oracledb.AuthMode.SYSDBA
+        ) as connection, connection.cursor() as cursor:
             cursor.execute("GRANT SELECT_CATALOG_ROLE TO SYSTEM")
     except oracledb.Error as exc:
         raise TestEnvironmentError(
             "Kunne ikke gi SYSTEM lesetilgang til Oracle sine DBA-visninger."
         ) from exc
-    finally:
-        if connection is not None:
-            connection.close()

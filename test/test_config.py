@@ -11,11 +11,9 @@ from statistikkbank.oracle import (
     parse_metadata,
     write_result,
 )
-from statistikkbank.prikking import prikking
-from statistikkbank.lokal import apply_incremental
 
 
-def _configuration():
+def configuration():
     """Bygger en gyldig konfigurasjon for en liten aggregattabell."""
     return Configuration.model_validate(
         {
@@ -44,7 +42,7 @@ def _configuration():
 
 def test_configuration_rejects_unknown_keys():
     """Sikrer at ukjente konfigurasjonsnøkler avvises."""
-    config = _configuration().model_dump()
+    config = configuration().model_dump()
     config["unknown"] = True
     with pytest.raises(ValidationError):
         Configuration.model_validate(config)
@@ -55,119 +53,3 @@ def test_resolve_env_reference(monkeypatch):
     monkeypatch.setenv("TEST_PASSWORD", "secret")
     assert resolve_secret("env://TEST_PASSWORD", password=True) == "secret"
 
-
-def test_prikking_adds_boolean_column_and_preserves_input_dtypes():
-    """Sikrer at prikking legger til markør uten å endre inndatatyper."""
-    data = pd.DataFrame({"periode": pd.Series([202501], dtype="int64")})
-    result = prikking(
-        data,
-        periode="periode",
-        formula="~ periode",
-        tallKol="antall",
-        prikking=True,
-        saerskilt=False,
-    )
-    assert result["periode"].dtype == data["periode"].dtype
-    assert result["prikket"].tolist() == [True]
-    assert result["prikket"].dtype == bool
-    assert list(result.columns) == ["periode", "prikket"]
-
-
-def test_metadata_tags_are_order_independent_and_multiline():
-    """Parser metadata uavhengig av rekkefølge og linjeskift."""
-    metadata = parse_metadata(
-        "#BESKRIVELSE Første linje\nandre linje #NAVN Navn #NAVN_EN English"
-    )
-    assert metadata == {
-        "BESKRIVELSE": "Første linje\nandre linje",
-        "NAVN": "Navn",
-        "NAVN_EN": "English",
-    }
-    with pytest.raises(ValueError, match="flere ganger"):
-        parse_metadata("#NAVN Én #NAVN To")
-    with pytest.raises(ValueError, match="flere ganger"):
-        parse_metadata("#NAVN #NAVN To")
-
-
-def test_csv_incremental_mode_skips_existing_periods():
-    """Beholder eksisterende perioder og tar inn nye CSV-perioder."""
-    aggregate = _configuration().smale_aggregater[0]
-    existing = pd.DataFrame({"periode": [202501], "region": ["Oslo"], "antall": [1]})
-    incoming = pd.DataFrame(
-        {
-            "periode": [202501, 202502],
-            "region": ["Oslo", "Oslo"],
-            "antall": [2, 3],
-            "prikket": [True, True],
-        }
-    )
-    result = apply_incremental(existing, incoming, aggregate)
-    assert result["periode"].tolist() == [202501, 202502]
-    assert result["antall"].tolist() == [1, 3]
-
-
-def test_csv_latest_period_mode_writes_only_the_latest_period_when_empty():
-    """Skriver bare siste periode når ingen eksisterende CSV-data finnes."""
-    aggregate = _configuration().smale_aggregater[0].model_copy(
-        update={"inkrementell": "overskriv_siste_periode"}
-    )
-    incoming = pd.DataFrame(
-        {
-            "periode": [202501, 202502],
-            "region": ["Oslo", "Oslo"],
-            "antall": [1, 2],
-            "prikket": [True, True],
-        }
-    )
-    result = apply_incremental(pd.DataFrame(), incoming, aggregate)
-    assert result["periode"].tolist() == [202502]
-
-
-def test_csv_pipeline_writes_marked_result_without_database(tmp_path):
-    """Kjører CSV-pipelinen uten database og skriver prikkingmarkør."""
-    config = _configuration()
-    input_directory = tmp_path / "inputs"
-    output_directory = tmp_path / "outputs"
-    input_directory.mkdir()
-    pd.DataFrame(
-        {"periode": [202501], "region": ["Oslo"], "antall": [12]}
-    ).to_csv(input_directory / "tabell.csv", index=False)
-
-    run(
-        config,
-        tmp_path,
-        input_directory=Path("inputs"),
-        output_directory=Path("outputs"),
-    )
-
-    result = pd.read_csv(output_directory / "tabell.csv")
-    assert result.to_dict("records") == [
-        {"periode": 202501, "region": "Oslo", "antall": 12, "prikket": True}
-    ]
-
-
-def test_schema_compatibility_rejects_narrow_columns():
-    """Kontrollerer kompatibilitet for Oracle-tegn-, tall- og tidsstempler."""
-    assert compatible_type("VARCHAR2(100)", ("VARCHAR2", 100, None, None))
-    assert not compatible_type("VARCHAR2(100)", ("VARCHAR2", 50, None, None))
-    assert compatible_type("NUMBER(10,2)", ("NUMBER", None, 12, 3))
-    assert not compatible_type("NUMBER(10,2)", ("NUMBER", None, 10, 1))
-    assert compatible_type("TIMESTAMP", ("TIMESTAMP(6)", None, None, None))
-    assert not compatible_type("TIMESTAMP", ("TIMESTAMP(3)", None, None, None))
-
-
-def test_empty_database_result_does_not_inspect_or_mutate_connection():
-    """Sikrer at tomme resultater ikke utfører databaseoperasjoner."""
-    class NoDatabaseCalls:
-        def __getattr__(self, name):
-            """Feiler testen dersom en metode eller egenskap brukes."""
-            raise AssertionError(f"Unexpected database call: {name}")
-
-    aggregate = _configuration().smale_aggregater[0]
-    write_result(
-        NoDatabaseCalls(),
-        "TEST",
-        aggregate,
-        pd.DataFrame(columns=["periode", "region", "antall", "prikket"]),
-        {},
-    )

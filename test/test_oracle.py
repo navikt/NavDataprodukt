@@ -1,9 +1,11 @@
 from uuid import uuid4
 
 import pandas as pd
+import pytest
 
 from statistikkbank.config import SmallAggregate
-from statistikkbank.oracle import write_result
+from statistikkbank.oracle import write_result, compatible_type, parse_metadata
+from test.test_config import configuration
 
 
 def test_write_result_appends_only_new_periods(oracle_connection):
@@ -82,3 +84,48 @@ def test_write_result_appends_only_new_periods(oracle_connection):
             if cursor.fetchone():
                 cursor.execute(f"DROP TABLE SYSTEM.{table} PURGE")
         oracle_connection.commit()
+
+
+def test_metadata_tags_are_order_independent_and_multiline():
+    """Parser metadata uavhengig av rekkefølge og linjeskift."""
+    metadata = parse_metadata(
+        "#BESKRIVELSE Første linje\nandre linje #NAVN Navn #NAVN_EN English"
+    )
+    assert metadata.model_dump() == {
+        "beskrivelse": "Første linje\nandre linje",
+        "navn": "Navn",
+        "navn_en": "English",
+        "beskrivelse_en": None,
+    }
+    with pytest.raises(ValueError, match="flere ganger"):
+        parse_metadata("#NAVN Én #NAVN To")
+    with pytest.raises(ValueError, match="flere ganger"):
+        parse_metadata("#NAVN #NAVN To")
+
+
+
+def test_schema_compatibility_rejects_narrow_columns():
+    """Kontrollerer kompatibilitet for Oracle-tegn-, tall- og tidsstempler."""
+    assert compatible_type("VARCHAR2(100)", ("VARCHAR2", 100, None, None))
+    assert not compatible_type("VARCHAR2(100)", ("VARCHAR2", 50, None, None))
+    assert compatible_type("NUMBER(10,2)", ("NUMBER", None, 12, 3))
+    assert not compatible_type("NUMBER(10,2)", ("NUMBER", None, 10, 1))
+    assert compatible_type("TIMESTAMP", ("TIMESTAMP(6)", None, None, None))
+    assert not compatible_type("TIMESTAMP", ("TIMESTAMP(3)", None, None, None))
+
+
+def test_empty_database_result_does_not_inspect_or_mutate_connection():
+    """Sikrer at tomme resultater ikke utfører databaseoperasjoner."""
+    class NoDatabaseCalls:
+        def __getattr__(self, name):
+            """Feiler testen dersom en metode eller egenskap brukes."""
+            raise AssertionError(f"Unexpected database call: {name}")
+
+    aggregate = configuration().smale_aggregater[0]
+    write_result(
+        NoDatabaseCalls(),
+        "TEST",
+        aggregate,
+        pd.DataFrame(columns=["periode", "region", "antall", "prikket"]),
+        {},
+    )

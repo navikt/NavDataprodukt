@@ -299,3 +299,8 @@ Write three sets of documentation.
 - a README_DEV.md for developers.
 
 Create an `eksempel` folder containing `inputs/ost_befolkning_kjonn.csv`, `inputs/ost_befolkning_alder.csv`, `outputs/ost_befolkning_kjonn.csv`, `outputs/ost_befolkning_alder.csv`, a configuration file for the transformations, SQL files that refer to the OBT source tables, and a README explaining how to run the example locally.
+
+TODO:
+- get source types from cursor, ikke dataframe. ignore with csv
+- determine incremental periods first, then read data for those periods only. Maybe do a select where 1=0 and compare
+- period filter

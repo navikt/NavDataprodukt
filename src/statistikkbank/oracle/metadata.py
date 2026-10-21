@@ -1,65 +1,96 @@
 from __future__ import annotations
 
-import logging
 import re
+from dataclasses import dataclass
 
+import logging
 import oracledb
-
-from statistikkbank.config import SmallAggregate
+from oracledb import Cursor
+from statistikkbank.config import SmallAggregate, Metadata
 
 LOGGER = logging.getLogger(__name__)
 
 
+@dataclass
+class TableMetadata:
+    table: Metadata
+    columns: dict[str, Metadata]
+
+
 def read_metadata(
-    connection: oracledb.Connection, schema: str, aggregate: SmallAggregate
-) -> dict[str, str]:
-    """Fyller manglende aggregatmetadata fra Oracle-kommentarer."""
+        connection: oracledb.Connection,
+        schema: str,
+        aggregate: SmallAggregate
+) -> TableMetadata:
+    """Fyller manglende aggregatmetadata fra Oracle-kommentarer.
+
+    Data fra konfigurasjon prioriteres over databasekommentarer.
+    """
+    table_name = aggregate.tabell
     with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT comments FROM sys.dba_tab_comments WHERE owner = :owner "
-            "AND table_name = :table_name",
-            owner=schema.upper(),
-            table_name=aggregate.tabell.upper(),
-        )
-        row = cursor.fetchone()
-        result = parse_metadata(row[0] if row else None)
-        entities = [(aggregate.tabell, aggregate)] + [
-            (variable.kolonne, variable)
-            for variable in [*aggregate.variabler, aggregate.tallkolonne]
-        ]
-        for column, model in entities:
-            if column == aggregate.tabell:
-                comments = result
-            else:
-                cursor.execute(
-                    "SELECT comments FROM sys.dba_col_comments WHERE owner = :owner "
-                    "AND table_name = :table_name AND column_name = :column_name",
-                    owner=schema.upper(),
-                    table_name=aggregate.tabell.upper(),
-                    column_name=column.upper(),
-                )
-                row = cursor.fetchone()
-                comments = parse_metadata(row[0] if row else None)
-            for tag in ("navn", "navn_en", "beskrivelse", "beskrivelse_en"):
-                value = getattr(model, tag)
-                if value:
-                    LOGGER.info("%s.%s hentes fra konfigurasjonen.", column, tag)
-                elif comments.get(tag.upper()):
-                    setattr(model, tag, comments[tag.upper()])
-                    LOGGER.info("%s.%s hentes fra databasekommentar.", column, tag)
-                else:
-                    raise ValueError(
-                        f"Metadatafeltet {tag} mangler for {column}; angi det i YAML "
-                        "eller legg det til som databasekommentar."
-                    )
-                LOGGER.debug("%s.%s = %s", column, tag, getattr(model, tag))
+        db_metadata = _fetch_table_metadata(schema, table_name, cursor)
+        config_metadata = Metadata.model_validate(aggregate.model_dump())
+        table_metadata = _merge_metadata(table_name, config_metadata, db_metadata)
+
+        columns_metadata = {}
+        for variable in [*aggregate.variabler, aggregate.tallkolonne]:
+            db_metadata = _fetch_column_metadata(schema, table_name, variable.kolonne, cursor)
+            config_metadata = Metadata.model_validate(variable.model_dump())
+            column_metadata = _merge_metadata(variable.kolonne, config_metadata, db_metadata)
+
+            columns_metadata[variable.kolonne] = column_metadata
+
+    return TableMetadata(table=table_metadata, columns=dict(columns_metadata))
+
+
+def _merge_metadata(column, config_metadata: Metadata, db_metadata: Metadata):
+    """Kombinerer metadata fra konfigurasjon og databasekommentarer, prioritert etter konfigurasjon."""
+    result = Metadata()
+    for tag in Metadata.model_fields.keys():
+        value = getattr(config_metadata, tag)
+        if value:
+            LOGGER.info("%s.%s hentes fra konfigurasjonen.", column, tag)
+        elif db_value := getattr(db_metadata, tag):
+            value = db_value
+            LOGGER.info("%s.%s hentes fra databasekommentar.", column, tag)
+        else:
+            raise ValueError(
+                f"Metadatafeltet {tag} mangler for {column}; angi det i YAML "
+                "eller legg det til som databasekommentar."
+            )
+        LOGGER.debug("%s.%s = %s", column, tag, value)
+        setattr(result, tag, value)
+
     return result
 
 
-def parse_metadata(comment: str | None) -> dict[str, str]:
+def _fetch_column_metadata(schema: str, table_name: str, column: str, cursor: Cursor) -> Metadata:
+    cursor.execute(
+        "select comments from sys.dba_col_comments where owner = :owner "
+        "and table_name = :table_name and column_name = :column_name",
+        owner=schema.upper(),
+        table_name=table_name.upper(),
+        column_name=column.upper(),
+    )
+    row = cursor.fetchone()
+    return parse_metadata(row[0] if row else None)
+
+
+def _fetch_table_metadata(schema: str, table_name: str, cursor: Cursor) -> Metadata:
+    cursor.execute(
+        "select comments from sys.dba_tab_comments where owner = :owner "
+        "and table_name = :table_name",
+        owner=schema.upper(),
+        table_name=table_name.upper(),
+    )
+    row = cursor.fetchone()
+    return parse_metadata(row[0] if row else None)
+
+
+def parse_metadata(comment: str | None) -> Metadata:
     """Parser navne- og beskrivelsestagger fra en databasekommentar."""
     if not comment:
-        return {}
+        return Metadata()
     matches = list(re.finditer(r"#(NAVN(?:_EN)?|BESKRIVELSE(?:_EN)?)\b", comment, re.I))
     values: dict[str, str] = {}
     seen: set[str] = set()
@@ -68,8 +99,10 @@ def parse_metadata(comment: str | None) -> dict[str, str]:
         if tag in seen:
             raise ValueError(f"Databasekommentaren inneholder taggen #{tag} flere ganger.")
         seen.add(tag)
+
         end = matches[index + 1].start() if index + 1 < len(matches) else len(comment)
-        value = comment[match.end() : end].strip()
+        value = comment[match.end(): end].strip()
         if value:
-            values[tag] = value
-    return values
+            values[tag.lower()] = value
+
+    return Metadata.model_validate(values)

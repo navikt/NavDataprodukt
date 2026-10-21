@@ -5,11 +5,16 @@ import json
 import os
 import re
 import sys
+from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, Annotated
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator, AfterValidator
+
+
+class ConfigError(ValueError):
+    """Feil i konfigurasjonen av statistikkbank."""
 
 
 DATABASE_PROFILES = {
@@ -22,14 +27,44 @@ DATABASE_PROFILES = {
 _IDENTIFIER = re.compile(r"^[A-Za-z][A-Za-z0-9_$#]{0,127}$")
 
 
+
+class InkrementalMode(StrEnum):
+    OVERSKRIV_IKKE = "overskriv_ikke"
+    OVERSKRIV_ALT = "overskriv_alt"
+    OVERSKRIV_SISTE_PERIODE = "overskriv_siste_periode"
+
+def validate_identifier(value: str) -> str:
+    """Kontrollerer og småbokstaverer en Oracle-identifikator."""
+    if not _IDENTIFIER.fullmatch(value):
+        raise ValueError(f"Må være et gyldig Oracle-navn, er: {value!r}")
+    return value.lower()
+
+def is_not_empty(value: str) -> str:
+    """Validerer at en streng ikke er tom eller bare mellomrom."""
+    if not value.strip():
+        raise ConfigError("Strengen kan ikke være tom eller bare mellomrom.")
+    return value
+
+
+NonEmptyString = Annotated[str, AfterValidator(is_not_empty)]
+OracleIdentifier = Annotated[str, AfterValidator(validate_identifier)]
+
+
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
+class Metadata(StrictModel):
+    navn: str | None = None
+    navn_en: str | None = None
+    beskrivelse: str | None = None
+    beskrivelse_en: str | None = None
+
+
 class DatabaseConnection(StrictModel):
     database: str
-    schema_name: str = Field(alias="schema")
-    user: str
+    schema_name: OracleIdentifier = Field(alias="schema")
+    user: NonEmptyString
     password: str
     timeout: int = Field(default=30, gt=0)
 
@@ -38,21 +73,8 @@ class DatabaseConnection(StrictModel):
     def validate_database(cls, value: str) -> str:
         """Kontrollerer at databasenavnet viser til en støttet profil."""
         if value not in DATABASE_PROFILES:
-            raise ValueError("database må være DWHP, DWHQ, DWHU eller DWHR")
-        return value
-
-    @field_validator("schema_name")
-    @classmethod
-    def validate_schema_name(cls, value: str) -> str:
-        """Validerer og normaliserer Oracle-skjemaet."""
-        return validate_identifier(value, "schema")
-
-    @field_validator("user")
-    @classmethod
-    def validate_user(cls, value: str) -> str:
-        """Avviser tomme databasebrukernavn."""
-        if not value.strip():
-            raise ValueError("user kan ikke være tom")
+            valid_db_names = ", ".join(sorted(DATABASE_PROFILES.keys()))
+            raise ConfigError("database må være en av " + valid_db_names)
         return value
 
     @field_validator("password")
@@ -60,82 +82,56 @@ class DatabaseConnection(StrictModel):
     def require_password_reference(cls, value: str) -> str:
         """Krever en støttet hemmelighetsreferanse for passordet."""
         if "://" not in value:
-            raise ValueError("password må være en hemmelighetsreferanse")
+            raise ConfigError("password må være en hemmelighetsreferanse")
         if urlsplit(value).scheme not in {"env", "terminal", "gsm"}:
-            raise ValueError("password må bruke env://, terminal:// eller gsm://")
+            raise ConfigError("password må bruke env://, terminal:// eller gsm://")
         return value
 
 
 class Variable(StrictModel):
     navn: str | None = None
     navn_en: str | None = None
-    kolonne: str
+    kolonne: OracleIdentifier
     beskrivelse: str | None = None
     beskrivelse_en: str | None = None
 
-    @field_validator("navn", "navn_en", "beskrivelse", "beskrivelse_en", mode="before")
+    # For everyone of navn, navn_en, ..., we want to normalize empty strings to None
+    @field_validator(*Metadata.model_fields.keys(), mode="before")
     @classmethod
     def normalize_metadata(cls, value: Any) -> Any:
         """Gjør tomme metadatafelt om til manglende verdier."""
         return value.strip() or None if isinstance(value, str) else value
-
-    @field_validator("kolonne")
-    @classmethod
-    def validate_column(cls, value: str) -> str:
-        """Validerer og normaliserer variabelnavnet."""
-        return validate_identifier(value, "kolonne")
 
 
 class SmallAggregate(StrictModel):
     navn: str | None = None
     navn_en: str | None = None
-    tabell: str
+    tabell: OracleIdentifier
     beskrivelse: str | None = None
     beskrivelse_en: str | None = None
-    sporring_sql: str
-    periodisering: str
-    inkrementell: str
+    sporring_sql: NonEmptyString
+    periodisering: OracleIdentifier
+    inkrementell: InkrementalMode
     tallkolonne: Variable
-    formula: str
+    formula: NonEmptyString
     prikking: bool
     saerskilt: bool
     variabler: list[Variable]
 
-    @field_validator("navn", "navn_en", "beskrivelse", "beskrivelse_en", mode="before")
+    # For everyone of navn, navn_en, ..., we want to normalize empty strings to None
+    @field_validator(*Metadata.model_fields.keys(), mode="before")
     @classmethod
     def normalize_metadata(cls, value: Any) -> Any:
         """Gjør tomme metadatafelt om til manglende verdier."""
         return value.strip() or None if isinstance(value, str) else value
 
-    @field_validator("tabell", "periodisering")
-    @classmethod
-    def validate_identifiers(cls, value: str, info: Any) -> str:
-        """Validerer og normaliserer tabell- og periodekolonnenavn."""
-        return validate_identifier(value, info.field_name)
-
-    @field_validator("inkrementell")
+    @field_validator("inkrementell", mode="before")
     @classmethod
     def validate_incremental_mode(cls, value: str) -> str:
         """Kontrollerer at inkrementell modus er støttet."""
-        allowed = {"overskriv_ikke", "overskriv_alt", "overskriv_siste_periode"}
+        allowed = list(InkrementalMode)
         if value not in allowed:
-            raise ValueError(f"inkrementell må være en av {', '.join(sorted(allowed))}")
-        return value
-
-    @field_validator("sporring_sql")
-    @classmethod
-    def validate_sql_path(cls, value: str) -> str:
-        """Krever en SQL-filbane."""
-        if not value.strip():
-            raise ValueError("sporring_sql kan ikke være tom")
-        return value
-
-    @field_validator("formula")
-    @classmethod
-    def validate_formula(cls, value: str) -> str:
-        """Krever en ikke-tom R-formel."""
-        if not value.strip():
-            raise ValueError("formula kan ikke være tom")
+            raise ConfigError(f"inkrementell må være én av {', '.join(sorted(allowed))}")
         return value
 
     @field_validator("variabler")
@@ -143,7 +139,7 @@ class SmallAggregate(StrictModel):
     def validate_variables(cls, value: list[Variable]) -> list[Variable]:
         """Krever minst én dimensjonsvariabel."""
         if not value:
-            raise ValueError("variabler må inneholde minst én variabel")
+            raise ConfigError("variabler må inneholde minst én variabel")
         return value
 
     @model_validator(mode="after")
@@ -151,11 +147,11 @@ class SmallAggregate(StrictModel):
         """Kontrollerer at dimensjoner og måltall har unike kolonner."""
         columns = [variable.kolonne for variable in self.variabler]
         if len(columns) != len(set(columns)):
-            raise ValueError("variabler kan ikke inneholde gjentatte kolonner")
+            raise ConfigError("variabler kan ikke inneholde gjentatte kolonner")
         if self.tallkolonne.kolonne in columns:
-            raise ValueError("tallkolonne kan ikke også være en variabel")
+            raise ConfigError("tallkolonne kan ikke også være en variabel")
         if self.periodisering not in columns:
-            raise ValueError("periodisering må være en av variablene")
+            raise ConfigError("periodisering må være en av variablene")
         return self
 
 
@@ -168,26 +164,20 @@ class Configuration(StrictModel):
     def validate_aggregates(cls, value: list[SmallAggregate]) -> list[SmallAggregate]:
         """Krever aggregater med unike måltabeller."""
         if not value:
-            raise ValueError("smale_aggregater må inneholde minst ett aggregat")
+            raise ConfigError("smale_aggregater må inneholde minst ett aggregat")
         tables = [item.tabell.upper() for item in value]
         if len(tables) != len(set(tables)):
-            raise ValueError("tabellnavn må være unike")
+            raise ConfigError("tabellnavn må være unike")
         return value
 
 
-def validate_identifier(value: str, field_name: str) -> str:
-    """Kontrollerer og småbokstaverer en Oracle-identifikator."""
-    if not _IDENTIFIER.fullmatch(value):
-        raise ValueError(f"{field_name} må være et gyldig Oracle-navn")
-    return value.lower()
-
-
-def load_configuration(config_path: str | Path) -> tuple[Configuration, Path]:
+def load_configuration(config_path: str | Path | None) -> tuple[Configuration, Path]:
     """Leser YAML-konfigurasjonen og returnerer modellen og filens mappe."""
-    try:
-        import yaml
-    except ImportError as exc:
-        raise ValueError("YAML-støtte mangler i installasjonen av statistikkbank.") from exc
+
+    if config_path is None:
+        raise ConfigError("Konfigurasjonsfilen må angis med --config eller STATISTIKKBANK_CONFIG.")
+
+    import yaml
 
     def unique_mapping(loader: yaml.SafeLoader, node: yaml.MappingNode, deep: bool = False) -> dict:
         """Avviser gjentatte nøkler i YAML-mappinger."""
@@ -210,22 +200,24 @@ def load_configuration(config_path: str | Path) -> tuple[Configuration, Path]:
     UniqueSafeLoader.add_constructor(
         yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_mapping
     )
+
     path = Path(config_path).expanduser().resolve()
     try:
         data = yaml.load(path.read_text(encoding="utf-8"), Loader=UniqueSafeLoader)
     except UnicodeDecodeError as exc:
-        raise ValueError("Konfigurasjonsfilen må være kodet som UTF-8.") from exc
+        raise ConfigError("Konfigurasjonsfilen må være kodet som UTF-8.") from exc
     except OSError as exc:
-        raise ValueError(f"Konfigurasjonsfilen kan ikke leses: {path}") from exc
+        raise ConfigError(f"Konfigurasjonsfilen kan ikke leses: {path}") from exc
     except yaml.YAMLError as exc:
-        raise ValueError("Konfigurasjonsfilen inneholder ugyldig YAML.") from exc
+        raise ConfigError("Konfigurasjonsfilen inneholder ugyldig YAML.") from exc
+
     try:
         config = Configuration.model_validate(data)
     except Exception as exc:
         from pydantic import ValidationError
 
         if isinstance(exc, ValidationError):
-            raise ValueError(
+            raise ConfigError(
                 "Konfigurasjonen er ugyldig:\n"
                 + "\n".join(format_validation_error(error) for error in exc.errors())
             ) from exc
@@ -252,7 +244,7 @@ def resolve_secret(reference: str, *, password: bool = False) -> str:
     """Slår opp en bokstavelig verdi eller støttet hemmelighetsreferanse."""
     if "://" not in reference:
         if password:
-            raise ValueError("Passord må angis som en hemmelighetsreferanse.")
+            raise ConfigError("Passord må angis som en hemmelighetsreferanse.")
         return reference
 
     parsed = urlsplit(reference)
@@ -260,14 +252,14 @@ def resolve_secret(reference: str, *, password: bool = False) -> str:
         key = parsed.netloc or parsed.path.lstrip("/")
         value = os.environ.get(key)
         if value is None:
-            raise ValueError(f"Miljøvariabelen {key} er ikke satt.")
+            raise ConfigError(f"Miljøvariabelen {key} er ikke satt.")
         return value
     if parsed.scheme == "terminal":
         if not sys.stdin.isatty():
-            raise ValueError("terminal:// kan bare brukes når standard input er en terminal.")
+            raise ConfigError("terminal:// kan bare brukes når standard input er en terminal.")
         value = getpass.getpass("Skriv inn hemmelig verdi: ")
         if not value:
-            raise ValueError("Den innleste hemmeligheten kan ikke være tom.")
+            raise ConfigError("Den innleste hemmeligheten kan ikke være tom.")
         return value
     if parsed.scheme == "gsm":
         from google.api_core.exceptions import GoogleAPIError
@@ -290,11 +282,11 @@ def resolve_secret(reference: str, *, password: bool = False) -> str:
             if key:
                 values = json.loads(payload)
                 if not isinstance(values, dict) or key not in values:
-                    raise ValueError(f"Nøkkelen {key!r} finnes ikke i den lagrede hemmeligheten.")
+                    raise ConfigError(f"Nøkkelen {key!r} finnes ikke i den lagrede hemmeligheten.")
                 payload = values[key]
             if not isinstance(payload, str) or not payload:
-                raise ValueError("Den refererte hemmelighetsverdien er tom eller ugyldig.")
+                raise ConfigError("Den refererte hemmelighetsverdien er tom eller ugyldig.")
             return payload
         except (GoogleAPIError, GoogleAuthError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise ValueError("Kunne ikke hente den refererte hemmeligheten fra Google Secret Manager.") from exc
-    raise ValueError(f"Ukjent hemmelighetsreferanse: {parsed.scheme}://.")
+            raise ConfigError("Kunne ikke hente den refererte hemmeligheten fra Google Secret Manager.") from exc
+    raise ConfigError(f"Ukjent hemmelighetsreferanse: {parsed.scheme}://.")

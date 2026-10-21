@@ -1,8 +1,11 @@
 from pathlib import Path
 
+import logging
 import pandas as pd
 
-from statistikkbank.config import SmallAggregate
+from statistikkbank.config import SmallAggregate, InkrementalMode
+
+LOGGER = logging.getLogger(__name__)
 
 
 def read_csv(directory: Path, aggregate: SmallAggregate) -> pd.DataFrame:
@@ -14,24 +17,28 @@ def read_csv(directory: Path, aggregate: SmallAggregate) -> pd.DataFrame:
         raise ValueError(f"Kan ikke lese CSV-filen {path}.") from exc
     except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError) as exc:
         raise ValueError(f"CSV-filen {path} har et ugyldig format.") from exc
+
     validate_columns(frame, aggregate)
+
     return frame
 
 
 def validate_columns(frame: pd.DataFrame, aggregate: SmallAggregate) -> None:
     """Kontrollerer at CSV-kolonnene stemmer med aggregatkonfigurasjonen."""
+    actual_by_lower = {str(column).lower(): column for column in frame.columns}
+    if len(actual_by_lower) != len(frame.columns):
+        raise ValueError(f"CSV-filen for {aggregate.tabell} har kolonner med like navn.")
+
     expected = [
         variable.kolonne
         for variable in aggregate.variabler
     ] + [aggregate.tallkolonne.kolonne]
-    actual_by_lower = {str(column).lower(): column for column in frame.columns}
-    if len(actual_by_lower) != len(frame.columns):
-        raise ValueError(f"CSV-filen for {aggregate.tabell} har kolonner med like navn.")
     missing = [column for column in expected if column.lower() not in actual_by_lower]
     unexpected = [
         column for column in frame.columns
         if str(column).lower() not in {name.lower() for name in expected}
     ]
+
     if missing or unexpected:
         details = []
         if missing:
@@ -39,6 +46,7 @@ def validate_columns(frame: pd.DataFrame, aggregate: SmallAggregate) -> None:
         if unexpected:
             details.append(f"ukjente: {', '.join(map(str, unexpected))}")
         raise ValueError(f"Kolonnene i {aggregate.tabell}.csv stemmer ikke ({'; '.join(details)}).")
+
     frame.rename(
         columns={actual_by_lower[column.lower()]: column for column in expected},
         inplace=True,
@@ -57,53 +65,13 @@ def write_csv(
     if frame.empty:
         print(f"Ingen rader for {aggregate.tabell}; CSV-filen endres ikke.")
         return
-    existing = pd.DataFrame()
-    if path.exists():
-        try:
-            existing = pd.read_csv(path)
-        except (OSError, pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError) as exc:
-            raise ValueError(f"Kan ikke lese eksisterende CSV-fil {path}.") from exc
-    combined = apply_incremental(existing, frame, aggregate)
+
+    if aggregate.inkrementell != InkrementalMode.OVERSKRIV_ALT:
+        LOGGER.warning("CSV filer overskrives også når inkrementell modus er satt til %s.", aggregate.inkrementell.value)
+
     if dry_run:
-        print(f"Ville skrevet {len(combined)} rader til {path}.")
+        print(f"Ville skrevet {len(frame)} rader til {path}.")
         return
+
     directory.mkdir(parents=True, exist_ok=True)
-    combined.to_csv(path, index=False)
-
-
-def apply_incremental(
-    existing: pd.DataFrame, result: pd.DataFrame, aggregate: SmallAggregate
-) -> pd.DataFrame:
-    """Beregner hvilke perioder som skal beholdes eller erstattes."""
-    mode = aggregate.inkrementell
-    if mode == "overskriv_alt":
-        return result.copy()
-
-    period = aggregate.periodisering
-    if period not in result or (not existing.empty and period not in existing):
-        raise ValueError(f"Periodekolonnen {period} mangler i CSV-resultatet.")
-    if mode == "overskriv_siste_periode":
-        latest = result[period].max()
-        retained = (
-            existing[existing[period] != latest]
-            if not existing.empty
-            else existing
-        )
-        new_rows = result[result[period] == latest]
-        return pd.concat([retained, new_rows], ignore_index=True)
-    if existing.empty:
-        return result.copy()
-
-    available = set(existing[period].dropna().tolist())
-    incoming = result[period].dropna()
-    duplicates = sorted(set(incoming[incoming.isin(available)].tolist()), key=str)
-    if duplicates:
-        import logging
-
-        logging.getLogger(__name__).warning(
-            "Periodene %s finnes allerede i %s og hoppes over.",
-            ", ".join(map(str, duplicates)),
-            aggregate.tabell,
-        )
-    new_rows = result[~result[period].isin(available)]
-    return pd.concat([existing, new_rows], ignore_index=True)
+    frame.to_csv(path, index=False)
