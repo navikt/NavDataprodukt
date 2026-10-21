@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import logging
 import oracledb
 from oracledb import Cursor
-from statistikkbank.config import SmallAggregate, Metadata
+from statistikkprodukt.config import SmallAggregate, Metadata
 
 LOGGER = logging.getLogger(__name__)
 

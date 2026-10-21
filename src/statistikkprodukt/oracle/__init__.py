@@ -1,6 +1,6 @@
-from statistikkbank.oracle.metadata import parse_metadata, read_metadata
-from statistikkbank.oracle.operations import connect, read_query, write_result
-from statistikkbank.oracle.validation import (
+from statistikkprodukt.oracle.metadata import parse_metadata, read_metadata
+from statistikkprodukt.oracle.operations import connect, read_query, write_result
+from statistikkprodukt.oracle.validation import (
     check_schema,
     compatible_type,
     oracle_type,

@@ -3,7 +3,7 @@ from pathlib import Path
 import logging
 import pandas as pd
 
-from statistikkbank.config import SmallAggregate, InkrementalMode
+from statistikkprodukt.config import SmallAggregate, InkrementalMode
 
 LOGGER = logging.getLogger(__name__)
 

@@ -5,8 +5,8 @@ import os
 from pathlib import Path
 
 import logging
-from statistikkbank import app
-from statistikkbank.config import load_configuration, ConfigError
+from statistikkprodukt import app
+from statistikkprodukt.config import load_configuration, ConfigError
 
 LOG_LEVELS = ("DEBUG", "INFO", "WARN", "ERROR")
 LOGGER = logging.getLogger(__name__)
@@ -138,7 +138,7 @@ def main() -> None:
 
 def _run_testenv(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
     """Utfører valgt testmiljøkommando."""
-    from statistikkbank import testenv
+    from statistikkprodukt import testenv
 
     if args.testenv_command == "setup":
         testenv.setup()

@@ -5,9 +5,9 @@ from pathlib import Path
 import logging
 import oracledb
 import pandas as pd
-from statistikkbank import oracle, lokal
-from statistikkbank.config import Configuration, SmallAggregate, resolve_secret
-from statistikkbank.prikking import prikking
+from statistikkprodukt import oracle, lokal
+from statistikkprodukt.config import Configuration, SmallAggregate, resolve_secret
+from statistikkprodukt.prikking import prikking
 
 LOGGER = logging.getLogger(__name__)
 

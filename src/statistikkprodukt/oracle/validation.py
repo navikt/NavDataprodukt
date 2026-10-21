@@ -6,7 +6,7 @@ from typing import Any
 import oracledb
 import pandas as pd
 
-from statistikkbank.config import SmallAggregate, validate_identifier
+from statistikkprodukt.config import SmallAggregate, validate_identifier
 
 
 def validate_result_columns(columns: list[str], aggregate: SmallAggregate) -> list[str]:

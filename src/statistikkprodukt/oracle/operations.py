@@ -6,13 +6,13 @@ from typing import Any
 import logging
 import oracledb
 import pandas as pd
-from statistikkbank.config import (
+from statistikkprodukt.config import (
     DATABASE_PROFILES,
     DatabaseConnection,
     SmallAggregate,
     validate_identifier, InkrementalMode,
 )
-from statistikkbank.oracle.validation import check_schema, oracle_type, validate_result_columns
+from statistikkprodukt.oracle.validation import check_schema, oracle_type, validate_result_columns
 
 LOGGER = logging.getLogger(__name__)
 
