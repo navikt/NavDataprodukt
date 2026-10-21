@@ -16,7 +16,7 @@ uv run statistikkprodukt --help
 Kjør eksemepelet, som leser to CSV-filer fra `eksempel/inputs/` og skriver resultatene til `eksempel/outputs/`, uten Oracle-tilkobling eller hemmeligheter:
 
 ```sh
-uv run statistikkprodukt aggregat prikking \
+uv run statistikkprodukt last \
   --config eksempel/konfigurasjon.yml \
   --input-directory inputs/ \
   --output-directory outputs/

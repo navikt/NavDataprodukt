@@ -60,19 +60,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="statistikkprodukt",
         description="Lag og vedlikehold småaggregater for statistikkprodukten.",
-        epilog="Bruk 'statistikkprodukt aggregat prikking --help' for flere valg.",
+        epilog="Bruk 'statistikkprodukt last --help' for flere valg.",
     )
 
     commands = parser.add_subparsers(dest="command", required=True)
-    aggregate = commands.add_parser(
-        "aggregat", help="Kjør prikking for ett eller flere småaggregater."
+    last = commands.add_parser(
+        "last", help="Opprett eller oppdater småaggregater i databasen."
     )
-
-    aggregate_commands = aggregate.add_subparsers(dest="aggregate_command", required=True)
-    suppression = aggregate_commands.add_parser(
-        "prikking", help="Kjør prikking for ett eller flere småaggregater."
-    )
-    _add_aggregate_options(suppression)
+    _add_aggregate_options(last)
 
     testenv = commands.add_parser(
         "testenv", help="Administrer Oracle-miljøet som brukes av tester."
@@ -108,7 +103,7 @@ def main() -> None:
         if args.command == "testenv":
             _run_testenv(args, parser)
 
-        elif args.command == "aggregat" and args.aggregate_command == "prikking":
+        elif args.command == "last":
             config_path = args.config
             configuration, config_directory = load_configuration(config_path)
 

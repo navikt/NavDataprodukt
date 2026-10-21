@@ -122,36 +122,36 @@ uv tool install statistikkprodukt@https://github.com/navikt/NavDataprodukt.git
 
 # Vis hjelpetekst
 statistikkprodukt --help
-statistikkprodukt aggregat prikking --help
+statistikkprodukt last --help
 
 # Kjør prikking for hele konfigurasjon i konfigurasjon.yml
 # Kan også specifieseres med env STATISTIKKPRODUKT_AGGREGAT_CONFIG=...
-statistikkprodukt aggregat prikking --config=konfigurasjon.yml
+statistikkprodukt last --config=konfigurasjon.yml
 export STATISTIKKPRODUKT_AGGREGAT_CONFIG=konfigurasjon.yml
 
 # Bare vis hva som ville skjedd
-statistikkprodukt aggregat prikking --dry-run
+statistikkprodukt last --dry-run
 
 # kontroller logging
-statistikkprodukt aggregat prikking --log-level=WARN
-statistikkprodukt aggregat prikking --verbose
+statistikkprodukt last --log-level=WARN
+statistikkprodukt last --verbose
 
 # Skriv til CSV i stedet for database (for eksempel til output/ost_tabellnavn_beskrivende.csv)
-statistikkprodukt aggregat prikking --output-directory=output/
+statistikkprodukt last --output-directory=output/
 
 # Les fra CSV i stedet for database. Filnavnet følger verdien i `tabell`,
 # for eksempel `tabell: ost_tabellnavn_beskrivende`
 # -> input/ost_tabellnavn_beskrivende.csv
-statistikkprodukt aggregat prikking --input-directory=input/
+statistikkprodukt last --input-directory=input/
 
 # Lokal innlesing og utskriving kan kombineres
-statistikkprodukt aggregat prikking \
+statistikkprodukt last \
   --input-directory=input/ --output-directory=output/
 
 # Ikke les hemmeligheter, hvis ikke det er behov for det
 
 # Bare kjør noen småaggregater
-statistikkprodukt aggregat prikking ost_tabellnavn_beskrivende ost_en_annen_tabellnavn_beskrivende
+statistikkprodukt last ost_tabellnavn_beskrivende ost_en_annen_tabellnavn_beskrivende
 
 # Kjør disse utenfor Copilot-sandkassen for å starte og stoppe Oracle-testmiljøet
 statistikkprodukt testenv setup
