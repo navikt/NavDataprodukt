@@ -55,9 +55,9 @@ smale_aggregater:
   - navn: Lekmansspråk
     navn_en: Human readable name
     tabell: ost_TABELLNAVN_BESKRIVENDE
-    beskrivelse: >
-       Dette er en beskrivelse av småaggregater. Bakgrunn, begrensninger, osv...
-    beskrivelse_en: English description.
+    innhold: >
+       Dette er en innhold av småaggregater. Bakgrunn, begrensninger, osv...
+    innhold_en: English description.
     # sti til SQL spørringen som definerer aggregatet
     sporring_sql: sporringer/ost_tabellnavn.sql
     periodisering: periode # kolonnen som angir tidsperiode
@@ -69,7 +69,7 @@ smale_aggregater:
     tallkolonne:
       navn: Antall A
       kolonne: antall_a
-      beskrivelse: >
+      innhold: >
         Antall A måler blablabla
 
     # argumenter som sendes videre til R skriptet
@@ -81,25 +81,27 @@ smale_aggregater:
       - navn: Region
         navn_en: Region
         kolonne: region
-        beskrivelse: >
+        innhold: >
           Denne variablen beskriver regionen som antall_a gjelder for.
           
           I tilfellet av sammenslåing av regioner vil den inneholde dagens verdi. 
+        innhold_en: English description.
 
       - navn: Periode
         navn_en: Period
         kolonne: periode
-        beskrivelse: >
+        innhold: >
           Denne variablen perioden som antall_a gjelder for på månedsgranularitet.
 
           Formatet er YYYYMM.
+        innhold_en: English description.
 ```
 
 Dersom man ikke spesifiserer noen av følgende felter, lastets verdiene inn fra Oracle kommentarer som må bruke tagging:
 - navn: `#NAVN`
 - navn_en: `#NAVN_EN`
-- beskrivelse: `#BESKRIVELSE`
-- beskrivelse_en: `#BESKRIVELSE_EN`
+- innhold: `#INNHOLD`
+- innhold: `#INNHOLD_EN`
 
 # Bruk av KI
 

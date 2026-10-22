@@ -74,9 +74,9 @@ smale_aggregater:
   - navn: Lekmansspråk
     navn_en: Human readable name
     tabell: ost_TABELLNAVN_BESKRIVENDE
-    beskrivelse: >
-       Dette er en beskrivelse av småaggregater. Bakgrunn, begrensninger, osv...
-    beskrivelse_en: English description.
+    innhold: >
+       Dette er en innhold av småaggregater. Bakgrunn, begrensninger, osv...
+    innhold_en: English description.
     # sti til SQL spørringen som definerer aggregatet
     sporring_sql: sporringer/ost_tabellnavn.sql
     periodisering: periode # kolonnen som angir tidsperiode
@@ -84,7 +84,7 @@ smale_aggregater:
     tallkolonne:
       navn: Antall A
       kolonne: antall_a
-      beskrivelse: >
+      innhold: >
         Antall A måler blablabla
 
     # argumenter som sendes videre til R skriptet
@@ -96,7 +96,7 @@ smale_aggregater:
       - navn: Region
         navn_en: Region
         kolonne: region
-        beskrivelse: >
+        innhold: >
           Denne variablen beskriver regionen som antall_a gjelder for.
           
           I tilfellet av sammenslåing av regioner vil den inneholde dagens verdi. 
@@ -104,13 +104,13 @@ smale_aggregater:
       - navn: Periode
         navn_en: Period
         kolonne: periode
-        beskrivelse: >
+        innhold: >
           Denne variablen perioden som antall_a gjelder for på månedsgranularitet.
 
           Formatet er YYYYMM.
 ```
 
-navn, navn_en, beskrivelse and beskrivelse_en are optional. If they are not specified, read the database comments (dba_tab_comments and dba_col_comments) and parse out tags. For eksampel, a comment could be `#NAVN Min variabel #NAVN_EN My variable #BESKRIVELSE Min beskrivelse #BESKRIVELSE_EN English description`. Fail if a field is missing in both the yml file and the database. Use the logging library, log (INFO) which source is taken. If --verbose is specified, log the values as well.
+navn, navn_en, innhold and innhold_en are optional. If they are not specified, read the database comments (dba_tab_comments and dba_col_comments) and parse out tags. For eksampel, a comment could be `#NAVN Min variabel #NAVN_EN My variable #INNHOLD Min innhold #INNHOLD_EN English description`. Fail if a field is missing in both the yml file and the database. Use the logging library, log (INFO) which source is taken. If --verbose is specified, log the values as well.
 
 ## CLI
 

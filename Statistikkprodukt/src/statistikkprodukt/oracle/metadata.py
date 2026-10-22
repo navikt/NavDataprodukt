@@ -88,10 +88,10 @@ def _fetch_table_metadata(schema: str, table_name: str, cursor: Cursor) -> Metad
 
 
 def parse_metadata(comment: str | None) -> Metadata:
-    """Parser navne- og beskrivelsestagger fra en databasekommentar."""
+    """Parser navne- og innholdstagger fra en databasekommentar."""
     if not comment:
         return Metadata()
-    matches = list(re.finditer(r"#(NAVN(?:_EN)?|BESKRIVELSE(?:_EN)?)\b", comment, re.I))
+    matches = list(re.finditer(r"#(NAVN(?:_EN)?|INNHOLD(?:_EN)?)\b", comment, re.I))
     values: dict[str, str] = {}
     seen: set[str] = set()
     for index, match in enumerate(matches):
