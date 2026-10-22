@@ -23,10 +23,16 @@ requires = ["uv_build>=0.12.19,<0.13.0"]
 build-backend = "uv_build"
 
 [tool.uv]
-#exclude-newer = "14 days"
+# not supported by dependabot
+# exclude-newer = "14 days"
 python-downloads = "never"
 package = true
 
+# Due to vulnerabilities, some dependencies need to be overridden to a specific version.
+# This also might require excluding those dependencies from the dependency cooldown.
+override-dependencies = [
+    "certifi>=2026.10.19"
+]
 
 [tool.uv.build-backend]
 wheel-include = ["R/*.R"]
