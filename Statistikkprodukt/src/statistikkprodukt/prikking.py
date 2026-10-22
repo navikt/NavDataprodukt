@@ -113,5 +113,5 @@ def _result_passthrough(data: pd.DataFrame) -> pd.DataFrame:
 #        if path.is_file():
 #            return path
 #    raise FileNotFoundError(
-#        "Fant ikke R-skriptet R/dvh_prikking.R i statistikkbank-pakken."
+#        "Fant ikke R-skriptet R/dvh_prikking.R i pakken."
 #    )

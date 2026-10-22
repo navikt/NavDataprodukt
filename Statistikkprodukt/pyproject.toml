@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "CLI for prikking av statistikkproduktaggregater"
 readme = "README.md"
 authors = []
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "oracledb>=26.0.1",
     "pandas>=3.0.6",
@@ -23,7 +23,7 @@ requires = ["uv_build>=0.12.19,<0.13.0"]
 build-backend = "uv_build"
 
 [tool.uv]
-exclude-newer = "14 days"
+#exclude-newer = "14 days"
 python-downloads = "never"
 package = true
 
