@@ -47,3 +47,74 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# Avoid accidentally checking in data files
+# Use git add -f to override
+*.ipynb
+*.parquet
+*.csv
+*.pkl
+*.xls
+*.xlsx
+*.png
+*.json
+*.pickle
+
+.png.bkp
+.dtmp
+
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+#drawio
+.png.bkp
+.dtmp
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.dbtenv
+.env
+.venv
+.vscode
+env
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+.idea/
+
+input/
+output/
+
+# Tracked CSV fixtures for the documented local example.
+!eksempel/
+eksempel/**/*.csv
+!eksempel/inputs/
+!eksempel/outputs/
+!eksempel/inputs/*.csv
+!eksempel/outputs/*.csv
