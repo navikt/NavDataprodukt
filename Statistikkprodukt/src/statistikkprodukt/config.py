@@ -57,8 +57,8 @@ class StrictModel(BaseModel):
 class Metadata(StrictModel):
     navn: str | None = None
     navn_en: str | None = None
-    beskrivelse: str | None = None
-    beskrivelse_en: str | None = None
+    innhold: str | None = None
+    innhold_en: str | None = None
 
 
 class DatabaseConnection(StrictModel):
@@ -92,8 +92,8 @@ class Variable(StrictModel):
     navn: str | None = None
     navn_en: str | None = None
     kolonne: OracleIdentifier
-    beskrivelse: str | None = None
-    beskrivelse_en: str | None = None
+    innhold: str | None = None
+    innhold_en: str | None = None
 
     # For everyone of navn, navn_en, ..., we want to normalize empty strings to None
     @field_validator(*Metadata.model_fields.keys(), mode="before")
@@ -107,8 +107,8 @@ class SmallAggregate(StrictModel):
     navn: str | None = None
     navn_en: str | None = None
     tabell: OracleIdentifier
-    beskrivelse: str | None = None
-    beskrivelse_en: str | None = None
+    innhold: str | None = None
+    innhold_en: str | None = None
     sporring_sql: NonEmptyString
     periodisering: OracleIdentifier
     inkrementell: InkrementalMode

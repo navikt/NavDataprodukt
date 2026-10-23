@@ -149,7 +149,7 @@ def _filter_for_incremental_mode(
 
 
 def _insert_rows(cursor: Any, table: str, frame: pd.DataFrame) -> None:
-    """Setter inn alle datarammerader med parameteriserte verdier."""
+    """Setter inn alle rader i tabellen med parameteriserte verdier."""
     if frame.empty:
         return
 

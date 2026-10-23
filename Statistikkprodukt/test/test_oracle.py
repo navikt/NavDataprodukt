@@ -89,13 +89,13 @@ def test_write_result_appends_only_new_periods(oracle_connection):
 def test_metadata_tags_are_order_independent_and_multiline():
     """Parser metadata uavhengig av rekkefølge og linjeskift."""
     metadata = parse_metadata(
-        "#BESKRIVELSE Første linje\nandre linje #NAVN Navn #NAVN_EN English"
+        "#INNHOLD Første linje\nandre linje #NAVN Navn #NAVN_EN English"
     )
     assert metadata.model_dump() == {
-        "beskrivelse": "Første linje\nandre linje",
+        "innhold": "Første linje\nandre linje",
         "navn": "Navn",
         "navn_en": "English",
-        "beskrivelse_en": None,
+        "innhold_en": None,
     }
     with pytest.raises(ValueError, match="flere ganger"):
         parse_metadata("#NAVN Én #NAVN To")
