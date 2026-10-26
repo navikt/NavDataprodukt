@@ -107,7 +107,7 @@ def _process_aggregate(
         dry_run=dry_run,
     )
 
-    data, source_types = _read_input(
+    data = _read_input(
         aggregate,
         config_directory,
         connection,
@@ -136,7 +136,6 @@ def _process_aggregate(
         configuration,
         aggregate,
         result,
-        source_types,
         connection,
         output_directory=output_directory,
         config_directory=config_directory,
@@ -220,30 +219,28 @@ def _read_input(
     *,
     input_directory: Path | None,
     periods_to_load: list[int | str] | None = None,
-) -> tuple[pd.DataFrame, dict[str, str]]:
+) -> pd.DataFrame:
     """Leser aggregatdata fra CSV eller Oracle."""
     if input_directory is not None:
         directory = _resolve_directory(input_directory, config_directory)
         data = lokal.read_csv(directory, aggregate)
         if periods_to_load is not None:
             data = data[data[aggregate.periodisering].isin(periods_to_load)]
-        return data, {}
+        return data
     else:
         if connection is None:
             raise RuntimeError("Databasetilkobling mangler.")
 
         sql_text = _read_sql(aggregate, config_directory)
-        data, types = oracle.read_query(
+        return oracle.read_query(
             connection, sql_text, aggregate, periods_to_load=periods_to_load
         )
-        return data, types
 
 
 def _write_output(
         configuration: Configuration,
         aggregate: SmallAggregate,
         result: pd.DataFrame,
-        source_types: dict[str, str],
         connection: oracledb.Connection | None,
         *,
         output_directory: Path | None,
@@ -259,7 +256,6 @@ def _write_output(
             configuration,
             aggregate,
             result,
-            source_types,
             connection,
             dry_run=dry_run,
         )
@@ -269,12 +265,11 @@ def _write_database(
         configuration: Configuration,
         aggregate: SmallAggregate,
         result: pd.DataFrame,
-        source_types: dict[str, str],
         connection: oracledb.Connection | None,
         *,
         dry_run: bool,
 ) -> None:
-    """Validerer og skriver resultatet til Oracle."""
+    """Skriver resultatet til Oracle."""
     schema = configuration.connection.schema_name
     if connection is None:
         if not dry_run:
@@ -293,7 +288,6 @@ def _write_database(
         schema,
         aggregate,
         result,
-        source_types,
         dry_run=dry_run,
     )
 

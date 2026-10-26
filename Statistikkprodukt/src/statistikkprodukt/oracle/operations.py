@@ -10,9 +10,8 @@ from statistikkprodukt.config import (
     DATABASE_PROFILES,
     DatabaseConnection,
     SmallAggregate,
-    validate_identifier, InkrementalMode,
+    validate_identifier,
 )
-from statistikkprodukt.oracle.validation import check_schema, oracle_type, validate_result_columns
 
 LOGGER = logging.getLogger(__name__)
 
@@ -49,8 +48,8 @@ def read_query(
         aggregate: SmallAggregate,
         *,
         periods_to_load: list[int | str] | None = None,
-) -> tuple[pd.DataFrame, dict[str, str]]:
-    """Kjører aggregatspørringen og returnerer data med kildetyper."""
+) -> pd.DataFrame:
+    """Kjører aggregatspørringen og returnerer resultatet."""
     sql = sql.strip().removesuffix(";").rstrip()
     parameters = []
     if periods_to_load is not None:
@@ -70,13 +69,8 @@ def read_query(
 
         rows = cursor.fetchall()
 
-        source_types = {
-            column[0].lower(): oracle_type(column) for column in description
-        }
-
-    expected_columns = validate_result_columns(columns, aggregate)
     frame = pd.DataFrame(rows, columns=columns)
-    return frame[expected_columns], source_types
+    return frame
 
 
 def read_periods(
@@ -106,17 +100,14 @@ def write_result(
         schema: str,
         aggregate: SmallAggregate,
         frame: pd.DataFrame,
-        source_types: dict[str, str],
         *,
         dry_run: bool = False,
 ) -> None:
-    """Validerer skjemaet og skriver aggregatresultatet transaksjonelt."""
+    """Skriver aggregatresultatet transaksjonelt."""
     if frame.empty:
         LOGGER.info("Ingen rader for %s; databasen endres ikke.", aggregate.tabell)
         return
 
-    # Fail if the query result has incompatible columns or types with the target table
-    check_schema(connection, schema, aggregate, frame, source_types)
     if dry_run:
         LOGGER.info(
             "Ville skrevet %d rader til %s.%s.",

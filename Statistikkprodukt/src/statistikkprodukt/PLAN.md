@@ -16,14 +16,14 @@ Use oracledb, ppy2 and pandas. All orchestration and interaction with the databa
 2. **Configuration location:** `--config` accepts a YAML file containing the database connection, `mapper` glob patterns for finding aggregate files, and a `smale_aggregater` list selecting aggregate names. Each selected YAML file contains one aggregate under `definisjon`; derive `tabell` from the YAML filename and derive `sporring_sql` by replacing its suffix with `.sql`. Resolve glob patterns and SQL paths from the configuration file's directory.
 3. **Oracle connection profiles:** Allowed values for `connection.database` are `DWHP`, `DWHQ`, `DWHU`, and `DWHR`. Use placeholder mappings for host, port, and service name for now.
 4. **Secret references:** Support the URI forms shown in the configuration example. Google Secret Manager payloads are UTF-8 strings and may contain a flat JSON object. Allow `terminal://` only when stdin is a TTY. Fail if a referenced value is missing.
-5. **SQL contract:** Pass SQL files to Oracle without pre-validating that they contain a `SELECT` statement or have no bind parameters. Returned column names must match the configured `kolonne` values. Source column types come from Oracle.
+5. **SQL contract:** Pass SQL files to Oracle without pre-validating that they contain a `SELECT` statement or have no bind parameters. Do not prevalidate result columns or target column types; Oracle reports incompatibilities when inserting.
 6. **Database writes:** `tabell` is the target table name. Use the configured `kolonne` values as output column names. Do not create uniqueness constraints. Write each "smalt aggregat" in one transaction. If the result has no rows, make no database changes.
 7. **Incremental modes:** The modes operate on the configured period column:
    - `overskriv_ikke` appends periods that do not already exist and logs a warning for periods that already exist.
    - `overskriv_alt` replaces all periods.
    - `overskriv_siste_periode` replaces only the maximum period present in the result.
 8. **Period values:** Periods may be integers, such as `YYYYMM`, or strings. Assume values of the chosen type are sortable.
-9. **Schema compatibility:** Use `dba_tables`, `dba_columns`, `dba_tab_comments`, and `dba_col_comments`; all database users in the target environment may read these views. Fail for all schema differences; never create, alter, remove, or narrow columns.
+9. **Schema compatibility:** Do not inspect the target schema before writing. Let Oracle report incompatible or missing target columns when inserting. Never create, alter, remove, or narrow columns.
 10. **Metadata:** Tags may appear in any order and values may span lines until the next tag. Escaping is not supported. Duplicate tags are invalid. Metadata is not required in local CSV mode.
 11. **Local CSV mode:** Specifying `--input-directory` selects CSV input; without it, input comes from the database. Specifying `--output-directory` selects CSV output; without it, output goes to the database. Both CSV files are named `{tabell}.csv` and are distinguished by their input and output directories. OBT source data are queried only through the SQL query; `obt_tabell` identifies the source table for database metadata. Existing output files are overwritten. `--dry-run` performs no writes and prints what would have happened.
 12. **R boundary:** `prikking` currently returns the input dataframe with one new Boolean column, `prikket`, set to `True`; all input dtypes are preserved. Persist only the input columns and `prikket`. The prepared R function sources the script directly rather than loading it as an installed R package.
@@ -52,7 +52,7 @@ Outline of the program's tasks:
 
 Keep in mind that the audience is not technical. Don't expose exceptions, unless --log-level=DEBUG is specified. Show informative error messages, utilize pydantic. No unknown keys. All in Norwegian.
 
-Do not change the database schema. If there is a mismatch, fail. Use `dba_tables` and `dba_columns` to check for compatibility.
+Do not change the database schema. If an insert is incompatible with the existing schema, let Oracle fail the insert and roll back the transaction.
 
 ## Configuration
 
@@ -288,4 +288,3 @@ Write three sets of documentation.
 Create an `eksempel` folder containing `inputs/ost_befolkning_kjonn.csv`, `inputs/ost_befolkning_alder.csv`, `outputs/ost_befolkning_kjonn.csv`, `outputs/ost_befolkning_alder.csv`, a configuration file for the transformations, SQL files that refer to the OBT source tables, and a README explaining how to run the example locally.
 
 TODO:
-- get source types from cursor, ikke dataframe. ignore with csv

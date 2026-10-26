@@ -105,7 +105,7 @@ def test_read_csv_period_selection(tmp_path, periods):
         {"periode": [202501, 202502], "region": ["Oslo", "Oslo"], "antall": [1, 2]}
     ).to_csv(tmp_path / "tabell.csv", index=False)
 
-    data, types = app._read_input(
+    data = app._read_input(
         aggregate,
         tmp_path,
         None,
@@ -113,7 +113,6 @@ def test_read_csv_period_selection(tmp_path, periods):
         periods_to_load=periods,
     )
     assert data["periode"].tolist() == ([202501, 202502] if periods is None else periods)
-    assert types == {}
 
 
 @pytest.mark.parametrize("periods", [None, [], [202502]])
@@ -123,7 +122,7 @@ def test_process_selects_periods_before_reading(monkeypatch, tmp_path, periods):
     calls = MagicMock()
     data = pd.DataFrame({"periode": [202502], "region": ["Oslo"], "antall": [2]})
     calls.select.return_value = periods
-    calls.read.return_value = (data, {})
+    calls.read.return_value = data
     monkeypatch.setattr(app, "_get_periods_to_load", calls.select)
     monkeypatch.setattr(app, "_read_input", calls.read)
     monkeypatch.setattr(app, "_write_output", calls.write)
@@ -162,7 +161,7 @@ def query_connection():
 def test_read_query_binds_period_values(periods):
     connection, cursor = query_connection()
     sql = "SELECT periode, region, antall FROM kilde;"
-    frame, types = oracle.read_query(
+    frame = oracle.read_query(
         connection, sql, configuration().smale_aggregater[0], periods_to_load=periods
     )
 
@@ -179,7 +178,6 @@ def test_read_query_binds_period_values(periods):
         assert parameters == [periods[0]]
         assert str(periods[0]) not in query
     assert list(frame.columns) == ["periode", "region", "antall"]
-    assert types == {"periode": "NUMBER(6,0)", "region": "VARCHAR2(100)", "antall": "NUMBER(10,0)"}
 
 
 def test_read_query_splits_large_period_lists():
