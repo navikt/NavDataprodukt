@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from statistikkprodukt.app import run
-from statistikkprodukt.config import Configuration, resolve_secret
+from statistikkprodukt.config import ConfigError, Configuration, load_configuration, resolve_secret
 from statistikkprodukt.oracle import (
     compatible_type,
     parse_metadata,
@@ -48,8 +48,119 @@ def test_configuration_rejects_unknown_keys():
         Configuration.model_validate(config)
 
 
+def test_loads_aggregate_configurations_matching_mapper(tmp_path):
+    """Leser en konfigurasjonsfil per aggregat fra mønsteret i hovedfilen."""
+    aggregate_directory = tmp_path / "sporringer"
+    aggregate_directory.mkdir()
+    (tmp_path / "konfigurasjon.yml").write_text(
+        """
+connection:
+  database: DWHP
+  schema: TEST
+  user: testuser
+  password: env://TEST_PASSWORD
+mapper:
+  - sporringer/**
+smale_aggregater:
+  - tabell
+""",
+        encoding="utf-8",
+    )
+    for table in ("tabell", "annen"):
+        (aggregate_directory / f"{table}.yml").write_text(
+            f"""
+definisjon:
+  tabell: {table}
+  sporring_sql: sporringer/{table}.sql
+  periodisering: periode
+  inkrementell: overskriv_ikke
+  tallkolonne:
+    kolonne: antall
+  formula: "~ periode * region"
+  prikking: true
+  saerskilt: false
+  variabler:
+    - kolonne: periode
+    - kolonne: region
+""",
+            encoding="utf-8",
+        )
+
+    config, config_directory = load_configuration(tmp_path / "konfigurasjon.yml")
+
+    assert config_directory == tmp_path
+    assert [aggregate.tabell for aggregate in config.smale_aggregater] == ["tabell"]
+    assert config.smale_aggregater[0].sporring_sql == "sporringer/tabell.sql"
+
+
+def test_aggregate_configuration_filename_must_match_table(tmp_path):
+    """Krever at aggregatfilen har samme navn som måltabellen."""
+    aggregate_directory = tmp_path / "sporringer"
+    aggregate_directory.mkdir()
+    (tmp_path / "konfigurasjon.yml").write_text(
+        """
+connection:
+  database: DWHP
+  schema: TEST
+  user: testuser
+  password: env://TEST_PASSWORD
+mapper:
+  - sporringer/**
+smale_aggregater:
+  - annet_navn
+""",
+        encoding="utf-8",
+    )
+    (aggregate_directory / "annet_navn.yml").write_text(
+        """
+definisjon:
+  tabell: tabell
+  sporring_sql: sporringer/tabell.sql
+  periodisering: periode
+  inkrementell: overskriv_ikke
+  tallkolonne:
+    kolonne: antall
+  formula: "~ periode * region"
+  prikking: true
+  saerskilt: false
+  variabler:
+    - kolonne: periode
+    - kolonne: region
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="samme navn"):
+        load_configuration(tmp_path / "konfigurasjon.yml")
+
+
+def test_aggregate_names_must_be_unique_across_search_paths(tmp_path):
+    """Avviser samme aggregatnavn i flere mapper."""
+    for directory in ("første", "andre"):
+        aggregate_directory = tmp_path / directory
+        aggregate_directory.mkdir()
+        (aggregate_directory / "tabell.yml").write_text("", encoding="utf-8")
+    (tmp_path / "konfigurasjon.yml").write_text(
+        """
+connection:
+  database: DWHP
+  schema: TEST
+  user: testuser
+  password: env://TEST_PASSWORD
+mapper:
+  - første/**
+  - andre/**
+smale_aggregater:
+  - tabell
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="finnes i flere konfigurasjonsfiler"):
+        load_configuration(tmp_path / "konfigurasjon.yml")
+
+
 def test_resolve_env_reference(monkeypatch):
     """Slår opp miljøvariabelreferanser for hemmeligheter."""
     monkeypatch.setenv("TEST_PASSWORD", "secret")
     assert resolve_secret("env://TEST_PASSWORD", password=True) == "secret"
-

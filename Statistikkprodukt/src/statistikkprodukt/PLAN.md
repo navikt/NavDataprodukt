@@ -13,7 +13,7 @@ Use oracledb, ppy2 and pandas. All orchestration and interaction with the databa
 ## Implementation decisions
 
 1. **Program and package naming:** The Python distribution, import package, and executable are all named `statistikkprodukt`.
-2. **Configuration location:** `--config` accepts a YAML file. Resolve relative paths from the directory containing that file.
+2. **Configuration location:** `--config` accepts a YAML file containing the database connection, `mapper` glob patterns for finding aggregate files, and a `smale_aggregater` list selecting aggregate names. Each selected YAML file contains one aggregate under `definisjon`; its filename must match `tabell`. Resolve glob patterns and SQL paths from the configuration file's directory.
 3. **Oracle connection profiles:** Allowed values for `connection.database` are `DWHP`, `DWHQ`, `DWHU`, and `DWHR`. Use placeholder mappings for host, port, and service name for now.
 4. **Secret references:** Support the URI forms shown in the configuration example. Google Secret Manager payloads are UTF-8 strings and may contain a flat JSON object. Allow `terminal://` only when stdin is a TTY. Fail if a referenced value is missing.
 5. **SQL contract:** Pass SQL files to Oracle without pre-validating that they contain a `SELECT` statement or have no bind parameters. Returned column names must match the configured `kolonne` values. Source column types come from Oracle.
@@ -56,7 +56,7 @@ Do not change the database schema. If there is a mismatch, fail. Use `dba_tables
 
 ## Configuration
 
-Example for the configuration file
+The shared configuration file contains connection settings and patterns for finding aggregate definitions:
 ```yaml
 connection:
   # selects preconfigured values for host, port, and service_name
@@ -74,45 +74,28 @@ connection:
   
   timeout: 30 # optional, default
 
-# Denne delen konfigurerer hva som skal gjøres
+mapper:
+  - sporringer/**
 smale_aggregater:
-  - navn: Lekmansspråk
-    navn_en: Human readable name
-    tabell: ost_TABELLNAVN_BESKRIVENDE
-    innhold: >
-       Dette er en innhold av småaggregater. Bakgrunn, begrensninger, osv...
-    innhold_en: English description.
-    # sti til SQL spørringen som definerer aggregatet
-    sporring_sql: sporringer/ost_tabellnavn.sql
-    periodisering: periode # kolonnen som angir tidsperiode
-    inkrementell: overskriv_ikke | overskriv_alt | overskriv_siste_periode
-    tallkolonne:
-      navn: Antall A
-      kolonne: antall_a
-      innhold: >
-        Antall A måler blablabla
+  - ost_befolkning_alder
+  - ost_befolkning_kjonn
+```
 
-    # argumenter som sendes videre til R skriptet
-    formula: "~ PERIODE * REGION * KJONN * ALDER"
-    prikking: true
-    saerskilt: false  
-
-    variabler:
-      - navn: Region
-        navn_en: Region
-        kolonne: region
-        innhold: >
-          Denne variablen beskriver regionen som antall_a gjelder for.
-          
-          I tilfellet av sammenslåing av regioner vil den inneholde dagens verdi. 
-
-      - navn: Periode
-        navn_en: Period
-        kolonne: periode
-        innhold: >
-          Denne variablen perioden som antall_a gjelder for på månedsgranularitet.
-
-          Formatet er YYYYMM.
+Each selected `.yml` or `.yaml` file contains exactly one aggregate definition, named after its target table. The names listed in `smale_aggregater` must be globally unique:
+```yaml
+definisjon:
+  tabell: ost_befolkning_alder
+  sporring_sql: sporringer/ost_befolkning_alder.sql
+  periodisering: periode
+  inkrementell: overskriv_alt
+  tallkolonne:
+    kolonne: antall
+  formula: "~ periode * alder"
+  prikking: true
+  saerskilt: false
+  variabler:
+    - kolonne: periode
+    - kolonne: alder
 ```
 
 navn, navn_en, innhold and innhold_en are optional. If they are not specified, read the database comments (dba_tab_comments and dba_col_comments) and parse out tags. For eksampel, a comment could be `#NAVN Min variabel #NAVN_EN My variable #INNHOLD Min innhold #INNHOLD_EN English description`. Fail if a field is missing in both the yml file and the database. Use the logging library, log (INFO) which source is taken. If --verbose is specified, log the values as well.

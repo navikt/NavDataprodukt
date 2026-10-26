@@ -10,7 +10,15 @@ from pathlib import Path
 from typing import Any, Annotated
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator, AfterValidator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 
 class ConfigError(ValueError):
@@ -155,6 +163,34 @@ class SmallAggregate(StrictModel):
         return self
 
 
+class AggregateConfiguration(StrictModel):
+    definisjon: SmallAggregate
+
+
+class ConfigurationSource(StrictModel):
+    connection: DatabaseConnection
+    mapper: list[NonEmptyString]
+    smale_aggregater: list[OracleIdentifier]
+
+    @field_validator("mapper")
+    @classmethod
+    def validate_mappers(cls, value: list[str]) -> list[str]:
+        """Krever minst ett mønster for aggregatkonfigurasjoner."""
+        if not value:
+            raise ConfigError("mapper må inneholde minst ett mønster")
+        return value
+
+    @field_validator("smale_aggregater")
+    @classmethod
+    def validate_aggregate_names(cls, value: list[str]) -> list[str]:
+        """Krever minst ett unikt aggregatnavn."""
+        if not value:
+            raise ConfigError("smale_aggregater må inneholde minst ett aggregat")
+        if len(value) != len(set(value)):
+            raise ConfigError("aggregatnavn må være unike")
+        return value
+
+
 class Configuration(StrictModel):
     connection: DatabaseConnection
     smale_aggregater: list[SmallAggregate]
@@ -172,15 +208,64 @@ class Configuration(StrictModel):
 
 
 def load_configuration(config_path: str | Path | None) -> tuple[Configuration, Path]:
-    """Leser YAML-konfigurasjonen og returnerer modellen og filens mappe."""
+    """Leser fellesinnstillinger og aggregatdefinisjoner fra separate YAML-filer."""
 
     if config_path is None:
-        raise ConfigError("Konfigurasjonsfilen må angis med --config eller STATISTIKKPRODUKT_CONFIG.")
+        raise ConfigError(
+            "Konfigurasjonsfilen må angis med --config eller STATISTIKKPRODUKT_AGGREGAT_CONFIG."
+        )
 
     import yaml
 
-    def unique_mapping(loader: yaml.SafeLoader, node: yaml.MappingNode, deep: bool = False) -> dict:
-        """Avviser gjentatte nøkler i YAML-mappinger."""
+    path = Path(config_path).expanduser().resolve()
+    data = _read_yaml(path, yaml)
+    try:
+        source = ConfigurationSource.model_validate(data)
+    except ValidationError as exc:
+        raise ConfigError(
+            "Konfigurasjonen er ugyldig:\n"
+            + "\n".join(format_validation_error(error) for error in exc.errors())
+        ) from exc
+
+    aggregate_paths = _find_aggregate_configurations(
+        source.mapper, source.smale_aggregater, path.parent
+    )
+    aggregates: list[SmallAggregate] = []
+    for aggregate_path in aggregate_paths:
+        aggregate_data = _read_yaml(aggregate_path, yaml)
+        try:
+            aggregate_config = AggregateConfiguration.model_validate(aggregate_data)
+        except ValidationError as exc:
+            raise ConfigError(
+                f"Konfigurasjonen i {aggregate_path} er ugyldig:\n"
+                + "\n".join(format_validation_error(error) for error in exc.errors())
+            ) from exc
+
+        aggregate = aggregate_config.definisjon
+        if aggregate_path.stem.lower() != aggregate.tabell.lower():
+            raise ConfigError(
+                f"Filnavnet {aggregate_path.name} må ha samme navn som tabellen "
+                f"{aggregate.tabell}."
+            )
+        aggregates.append(aggregate)
+
+    try:
+        config = Configuration(
+            connection=source.connection,
+            smale_aggregater=aggregates,
+        )
+    except ValidationError as exc:
+        raise ConfigError(
+            "Konfigurasjonen er ugyldig:\n"
+            + "\n".join(format_validation_error(error) for error in exc.errors())
+        ) from exc
+    return config, path.parent
+
+
+def _read_yaml(path: Path, yaml: Any) -> Any:
+    """Leser YAML og avviser gjentatte nøkler."""
+
+    def unique_mapping(loader: Any, node: Any, deep: bool = False) -> dict:
         mapping: dict[Any, Any] = {}
         for key_node, value_node in node.value:
             key = loader.construct_object(key_node, deep=deep)
@@ -201,28 +286,48 @@ def load_configuration(config_path: str | Path | None) -> tuple[Configuration, P
         yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_mapping
     )
 
-    path = Path(config_path).expanduser().resolve()
     try:
-        data = yaml.load(path.read_text(encoding="utf-8"), Loader=UniqueSafeLoader)
+        return yaml.load(path.read_text(encoding="utf-8"), Loader=UniqueSafeLoader)
     except UnicodeDecodeError as exc:
-        raise ConfigError("Konfigurasjonsfilen må være kodet som UTF-8.") from exc
+        raise ConfigError(f"Konfigurasjonsfilen må være kodet som UTF-8: {path}") from exc
     except OSError as exc:
         raise ConfigError(f"Konfigurasjonsfilen kan ikke leses: {path}") from exc
     except yaml.YAMLError as exc:
-        raise ConfigError("Konfigurasjonsfilen inneholder ugyldig YAML.") from exc
+        raise ConfigError(f"Konfigurasjonsfilen inneholder ugyldig YAML: {path}") from exc
 
-    try:
-        config = Configuration.model_validate(data)
-    except Exception as exc:
-        from pydantic import ValidationError
 
-        if isinstance(exc, ValidationError):
+def _find_aggregate_configurations(
+    patterns: list[str], aggregate_names: list[str], directory: Path
+) -> list[Path]:
+    """Finner konfigurasjonsfiler for valgte aggregater i søkemønstrene."""
+    paths: set[Path] = set()
+    for pattern in patterns:
+        try:
+            matches = directory.glob(pattern)
+            paths.update(
+                path.resolve()
+                for path in matches
+                if path.is_file() and path.suffix.lower() in {".yml", ".yaml"}
+            )
+        except (OSError, ValueError) as exc:
+            raise ConfigError(f"Ugyldig mønster for aggregatkonfigurasjoner: {pattern}") from exc
+
+    paths_by_name: dict[str, Path] = {}
+    for path in sorted(paths):
+        name = path.stem.lower()
+        if name in paths_by_name:
             raise ConfigError(
-                "Konfigurasjonen er ugyldig:\n"
-                + "\n".join(format_validation_error(error) for error in exc.errors())
-            ) from exc
-        raise
-    return config, path.parent
+                f"Aggregatnavnet {name} finnes i flere konfigurasjonsfiler: "
+                f"{paths_by_name[name]} og {path}."
+            )
+        paths_by_name[name] = path
+
+    missing = [name for name in aggregate_names if name not in paths_by_name]
+    if missing:
+        raise ConfigError(
+            f"Fant ikke konfigurasjonsfiler for aggregatene: {', '.join(missing)}."
+        )
+    return [paths_by_name[name] for name in aggregate_names]
 
 
 def format_validation_error(error: dict[str, Any]) -> str:

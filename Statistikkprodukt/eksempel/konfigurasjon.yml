@@ -6,61 +6,9 @@ connection:
   password: terminal://
   timeout: 30
 
-smale_aggregater:
-  - navn: Befolkning etter kjønn
-    navn_en: Population by sex
-    tabell: ost_befolkning_kjonn
-    innhold: Befolkning fordelt etter periode og kjønn.
-    innhold_en: Population by period and sex.
-    sporring_sql: sporringer/ost_befolkning_kjonn.sql
-    periodisering: periode
-    inkrementell: overskriv_alt
-    tallkolonne:
-      navn: Antall personer
-      navn_en: Number of people
-      kolonne: antall
-      innhold: Antall personer i gruppen.
-      innhold_en: Number of people in the group.
-    formula: "~ periode * kjonn"
-    prikking: true
-    saerskilt: false
-    variabler:
-      - navn: Periode
-        navn_en: Period
-        kolonne: periode
-        innhold: Månedsperiode på formatet YYYYMM.
-        innhold_en: Month in YYYYMM format.
-      - navn: Kjønn
-        navn_en: Sex
-        kolonne: kjonn
-        innhold: Kjønnskategori.
-        innhold_en: Sex category.
+mapper:
+  - sporringer/**
 
-  - navn: Befolkning etter alder
-    navn_en: Population by age
-    tabell: ost_befolkning_alder
-    innhold: Befolkning fordelt etter periode og alder.
-    innhold_en: Population by period and age.
-    sporring_sql: sporringer/ost_befolkning_alder.sql
-    periodisering: periode
-    inkrementell: overskriv_alt
-    tallkolonne:
-      navn: Antall personer
-      navn_en: Number of people
-      kolonne: antall
-      innhold: Antall personer i gruppen.
-      innhold_en: Number of people in the group.
-    formula: "~ periode * alder"
-    prikking: true
-    saerskilt: false
-    variabler:
-      - navn: Periode
-        navn_en: Period
-        kolonne: periode
-        innhold: Månedsperiode på formatet YYYYMM.
-        innhold_en: Month in YYYYMM format.
-      - navn: Alder
-        navn_en: Age
-        kolonne: alder
-        innhold: Alder i ettårige grupper.
-        innhold_en: Age in single-year groups.
+smale_aggregater:
+  - ost_befolkning_alder
+  - ost_befolkning_kjonn

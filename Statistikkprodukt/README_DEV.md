@@ -34,6 +34,23 @@ uv sync
 uv run pytest test/test_config.py
 ```
 
+## Konfigurasjon
+
+`--config` peker på en YAML-fil med databaseinnstillinger, søkemønstre i `mapper` og listen `smale_aggregater` over hvilke aggregater som skal kjøres. Mønstrene finner aggregatfilene; de velger ikke aggregatene. Hvert aggregatnavn må være unikt og må samsvare med filnavnet og `tabell`-verdien, for eksempel `ost_befolkning_alder` og `sporringer/ost_befolkning_alder.yml`. Mønstre og SQL-filstier tolkes relativt til konfigurasjonsfilen.
+
+```yaml
+connection:
+  database: DWHP
+  schema: STATISTIKKPRODUKT
+  user: env://ORACLE_USER
+  password: env://ORACLE_PASSWORD
+mapper:
+  - sporringer/**
+smale_aggregater:
+  - ost_befolkning_alder
+  - ost_befolkning_kjonn
+```
+
 ## Integrasjonstester med Oracle
 
 Oracle-testmiljøet må administreres utenfor Copilot-sandkassen:
