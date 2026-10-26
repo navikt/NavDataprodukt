@@ -3,8 +3,9 @@ from uuid import uuid4
 import pandas as pd
 import pytest
 
-from statistikkprodukt.config import InkrementalMode, SmallAggregate
+from statistikkprodukt.config import InkrementalMode, Metadata, SmallAggregate
 from statistikkprodukt import app, oracle
+from statistikkprodukt.oracle import metadata
 from statistikkprodukt.oracle import (
     write_result,
     compatible_type,
@@ -14,6 +15,45 @@ from statistikkprodukt.oracle import (
     read_target_periods,
 )
 from test.test_config import configuration
+
+
+def test_read_metadata_uses_obt_table(monkeypatch):
+    """Leser tabell- og kolonnemetadata fra OBT-tabellen."""
+    calls = []
+
+    class Cursor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
+    def fetch_table(schema, table_name, cursor):
+        calls.append(("table", schema, table_name))
+        return Metadata()
+
+    def fetch_column(schema, table_name, column, cursor):
+        calls.append(("column", schema, table_name, column))
+        return Metadata()
+
+    monkeypatch.setattr(metadata, "_fetch_table_metadata", fetch_table)
+    monkeypatch.setattr(metadata, "_fetch_column_metadata", fetch_column)
+    monkeypatch.setattr(metadata, "_merge_metadata", lambda name, config, db: db)
+
+    aggregate = configuration().smale_aggregater[0]
+    aggregate.obt_tabell = "obt.obt_kilde"
+    metadata.read_metadata(Connection(), "TEST", aggregate)
+
+    assert calls == [
+        ("table", "obt", "obt_kilde"),
+        ("column", "obt", "obt_kilde", "periode"),
+        ("column", "obt", "obt_kilde", "region"),
+        ("column", "obt", "obt_kilde", "antall"),
+    ]
 
 
 def test_metadata_tags_are_order_independent_and_multiline():

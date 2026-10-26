@@ -26,16 +26,24 @@ def read_metadata(
 
     Data fra konfigurasjon prioriteres over databasekommentarer.
     """
-    table_name = aggregate.tabell
+    table_parts = aggregate.obt_tabell.split(".")
+    owner, table_name = (table_parts[0], table_parts[1]) if len(table_parts) == 2 else (
+        schema,
+        table_parts[0],
+    )
     with connection.cursor() as cursor:
-        db_metadata = _fetch_table_metadata(schema, table_name, cursor)
-        config_metadata = Metadata.model_validate(aggregate.model_dump())
+        db_metadata = _fetch_table_metadata(owner, table_name, cursor)
+        config_metadata = Metadata.model_validate(
+            aggregate.model_dump(include=set(Metadata.model_fields))
+        )
         table_metadata = _merge_metadata(table_name, config_metadata, db_metadata)
 
         columns_metadata = {}
         for variable in [*aggregate.variabler, aggregate.tallkolonne]:
-            db_metadata = _fetch_column_metadata(schema, table_name, variable.kolonne, cursor)
-            config_metadata = Metadata.model_validate(variable.model_dump())
+            db_metadata = _fetch_column_metadata(owner, table_name, variable.kolonne, cursor)
+            config_metadata = Metadata.model_validate(
+                variable.model_dump(include=set(Metadata.model_fields))
+            )
             column_metadata = _merge_metadata(variable.kolonne, config_metadata, db_metadata)
 
             columns_metadata[variable.kolonne] = column_metadata

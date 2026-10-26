@@ -1,4 +1,5 @@
 definisjon:
+  obt_tabell: obt_befolkning
   navn: Befolkning etter kjønn
   navn_en: Population by sex
   innhold: Befolkning fordelt etter periode og kjønn.

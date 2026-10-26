@@ -26,6 +26,7 @@ def configuration():
             "smale_aggregater": [
                 {
                     "tabell": "TABELL",
+                    "obt_tabell": "OBT_TABELL",
                     "sporring_sql": "select.sql",
                     "periodisering": "periode",
                     "inkrementell": "overskriv_ikke",
@@ -70,6 +71,7 @@ smale_aggregater:
         (aggregate_directory / f"{table}.yml").write_text(
             f"""
 definisjon:
+  obt_tabell: OBT_TABELL
   periodisering: periode
   inkrementell: overskriv_ikke
   tallkolonne:
@@ -88,6 +90,7 @@ definisjon:
 
     assert config_directory == tmp_path
     assert [aggregate.tabell for aggregate in config.smale_aggregater] == ["tabell"]
+    assert config.smale_aggregater[0].obt_tabell == "obt_tabell"
     assert config.smale_aggregater[0].sporring_sql == "sporringer/tabell.sql"
 
 
@@ -113,6 +116,7 @@ smale_aggregater:
         """
 definisjon:
   tabell: tabell
+  obt_tabell: OBT_TABELL
   sporring_sql: sporringer/tabell.sql
   periodisering: periode
   inkrementell: overskriv_ikke

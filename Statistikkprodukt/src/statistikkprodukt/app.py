@@ -117,7 +117,7 @@ def _process_aggregate(
     LOGGER.info("Lest %d rader for %s.", len(data), aggregate.tabell)
 
     if connection is not None:
-        LOGGER.info("Henter metadata for %s fra Oracle.", aggregate.tabell)
+        LOGGER.info("Henter metadata for %s fra Oracle.", aggregate.obt_tabell)
         table_metadata = oracle.read_metadata(connection, configuration.connection.schema_name, aggregate)
 
     LOGGER.info("Prikker %d rader for %s.", len(data), aggregate.tabell)

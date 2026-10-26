@@ -25,7 +25,7 @@ Use oracledb, ppy2 and pandas. All orchestration and interaction with the databa
 8. **Period values:** Periods may be integers, such as `YYYYMM`, or strings. Assume values of the chosen type are sortable.
 9. **Schema compatibility:** Use `dba_tables`, `dba_columns`, `dba_tab_comments`, and `dba_col_comments`; all database users in the target environment may read these views. Fail for all schema differences; never create, alter, remove, or narrow columns.
 10. **Metadata:** Tags may appear in any order and values may span lines until the next tag. Escaping is not supported. Duplicate tags are invalid. Metadata is not required in local CSV mode.
-11. **Local CSV mode:** Specifying `--input-directory` selects CSV input; without it, input comes from the database. Specifying `--output-directory` selects CSV output; without it, output goes to the database. Both CSV files are named `{tabell}.csv` and are distinguished by their input and output directories. OBT source tables are referenced only inside the SQL query. Existing output files are overwritten. `--dry-run` performs no writes and prints what would have happened.
+11. **Local CSV mode:** Specifying `--input-directory` selects CSV input; without it, input comes from the database. Specifying `--output-directory` selects CSV output; without it, output goes to the database. Both CSV files are named `{tabell}.csv` and are distinguished by their input and output directories. OBT source data are queried only through the SQL query; `obt_tabell` identifies the source table for database metadata. Existing output files are overwritten. `--dry-run` performs no writes and prints what would have happened.
 12. **R boundary:** `prikking` currently returns the input dataframe with one new Boolean column, `prikket`, set to `True`; all input dtypes are preserved. Persist only the input columns and `prikket`. The prepared R function sources the script directly rather than loading it as an installed R package.
 13. **Language and errors:** CLI help and output, configuration validation, logs, documentation, and other user-facing errors must be in Norwegian. Exit with `0` for success, `2` for CLI or configuration errors, and `1` for operational failures.
 14. **Container:** Use an Ubuntu base image and install Python and R. Defer a Chainguard-based image.
@@ -84,6 +84,7 @@ smale_aggregater:
 Each selected `.yml` or `.yaml` file contains exactly one aggregate definition, named after its target table. The names listed in `smale_aggregater` must be globally unique:
 ```yaml
 definisjon:
+  obt_tabell: obt_befolkning
   periodisering: periode
   inkrementell: overskriv_alt
   tallkolonne:
@@ -96,7 +97,7 @@ definisjon:
     - kolonne: alder
 ```
 
-navn, navn_en, innhold and innhold_en are optional. If they are not specified, read the database comments (dba_tab_comments and dba_col_comments) and parse out tags. For eksampel, a comment could be `#NAVN Min variabel #NAVN_EN My variable #INNHOLD Min innhold #INNHOLD_EN English description`. Fail if a field is missing in both the yml file and the database. Use the logging library, log (INFO) which source is taken. If --verbose is specified, log the values as well.
+`obt_tabell` names the OBT source table whose table and column comments supply missing metadata. It may be schema-qualified, for example `OBT.BEFOLKNING_ALDER`; an unqualified name uses the configured connection schema. `navn`, `navn_en`, `innhold` and `innhold_en` are optional. If they are not specified, read the database comments (`dba_tab_comments` and `dba_col_comments`) for `obt_tabell` and parse out tags. For example, a comment could be `#NAVN Min variabel #NAVN_EN My variable #INNHOLD Min innhold #INNHOLD_EN English description`. Fail if a field is missing in both the YAML file and the database. Use the logging library, log (INFO) which source is taken. If --verbose is specified, log the values as well.
 
 ## CLI
 

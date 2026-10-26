@@ -47,6 +47,15 @@ def validate_identifier(value: str) -> str:
         raise ValueError(f"Må være et gyldig Oracle-navn, er: {value!r}")
     return value.lower()
 
+
+def validate_table_identifier(value: str) -> str:
+    """Kontrollerer et tabellnavn, eventuelt kvalifisert med skjema."""
+    parts = value.split(".")
+    if len(parts) not in {1, 2}:
+        raise ValueError(f"Må være et gyldig Oracle-tabellnavn, er: {value!r}")
+    return ".".join(validate_identifier(part) for part in parts)
+
+
 def is_not_empty(value: str) -> str:
     """Validerer at en streng ikke er tom eller bare mellomrom."""
     if not value.strip():
@@ -56,6 +65,7 @@ def is_not_empty(value: str) -> str:
 
 NonEmptyString = Annotated[str, AfterValidator(is_not_empty)]
 OracleIdentifier = Annotated[str, AfterValidator(validate_identifier)]
+OracleTableIdentifier = Annotated[str, AfterValidator(validate_table_identifier)]
 
 
 class StrictModel(BaseModel):
@@ -115,6 +125,7 @@ class SmallAggregate(StrictModel):
     navn: str | None = None
     navn_en: str | None = None
     tabell: OracleIdentifier
+    obt_tabell: OracleTableIdentifier
     innhold: str | None = None
     innhold_en: str | None = None
     sporring_sql: NonEmptyString

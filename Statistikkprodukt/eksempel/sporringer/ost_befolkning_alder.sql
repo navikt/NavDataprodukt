@@ -1,2 +1,3 @@
-SELECT periode, alder, antall
-FROM OBT.BEFOLKNING_ALDER
+select periode, alder, antall
+from obt_befolkning
+group by periode, alder
