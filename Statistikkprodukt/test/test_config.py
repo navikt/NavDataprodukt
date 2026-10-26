@@ -51,7 +51,7 @@ def test_configuration_rejects_unknown_keys():
 
 def test_loads_aggregate_configurations_matching_mapper(tmp_path):
     """Leser en konfigurasjonsfil per aggregat fra mønsteret i hovedfilen."""
-    aggregate_directory = tmp_path / "sporringer"
+    aggregate_directory = tmp_path / "aggregater"
     aggregate_directory.mkdir()
     (tmp_path / "konfigurasjon.yml").write_text(
         """
@@ -61,7 +61,7 @@ connection:
   user: testuser
   password: env://TEST_PASSWORD
 mapper:
-  - sporringer/**
+  - aggregater/**
 smale_aggregater:
   - tabell
 """,
@@ -91,12 +91,12 @@ definisjon:
     assert config_directory == tmp_path
     assert [aggregate.tabell for aggregate in config.smale_aggregater] == ["tabell"]
     assert config.smale_aggregater[0].obt_tabell == "obt_tabell"
-    assert config.smale_aggregater[0].sporring_sql == "sporringer/tabell.sql"
+    assert config.smale_aggregater[0].sporring_sql == "aggregater/tabell.sql"
 
 
 def test_aggregate_table_and_sql_are_inferred_from_filename(tmp_path):
     """Utleder tabell og SQL-sti fra aggregatfilen."""
-    aggregate_directory = tmp_path / "sporringer"
+    aggregate_directory = tmp_path / "aggregater"
     aggregate_directory.mkdir()
     (tmp_path / "konfigurasjon.yml").write_text(
         """
@@ -106,7 +106,7 @@ connection:
   user: testuser
   password: env://TEST_PASSWORD
 mapper:
-  - sporringer/**
+  - aggregater/**
 smale_aggregater:
   - annet_navn
 """,
@@ -117,7 +117,7 @@ smale_aggregater:
 definisjon:
   tabell: tabell
   obt_tabell: OBT_TABELL
-  sporring_sql: sporringer/tabell.sql
+  sporring_sql: aggregater/tabell.sql
   periodisering: periode
   inkrementell: overskriv_ikke
   tallkolonne:
@@ -135,7 +135,7 @@ definisjon:
     config, _ = load_configuration(tmp_path / "konfigurasjon.yml")
 
     assert config.smale_aggregater[0].tabell == "annet_navn"
-    assert config.smale_aggregater[0].sporring_sql == "sporringer/annet_navn.sql"
+    assert config.smale_aggregater[0].sporring_sql == "aggregater/annet_navn.sql"
 
 
 def test_aggregate_names_must_be_unique_across_search_paths(tmp_path):

@@ -7,7 +7,7 @@ connection:
   timeout: 30
 
 mapper:
-  - sporringer/**
+  - aggregater/**
 
 smale_aggregater:
   - ost_befolkning_alder

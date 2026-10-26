@@ -45,7 +45,7 @@ connection:
   user: env://ORACLE_USER
   password: env://ORACLE_PASSWORD
 mapper:
-  - sporringer/**
+  - aggregater/**
 smale_aggregater:
   - ost_befolkning_alder
   - ost_befolkning_kjonn
