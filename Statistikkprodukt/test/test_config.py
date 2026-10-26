@@ -70,8 +70,6 @@ smale_aggregater:
         (aggregate_directory / f"{table}.yml").write_text(
             f"""
 definisjon:
-  tabell: {table}
-  sporring_sql: sporringer/{table}.sql
   periodisering: periode
   inkrementell: overskriv_ikke
   tallkolonne:
@@ -93,8 +91,8 @@ definisjon:
     assert config.smale_aggregater[0].sporring_sql == "sporringer/tabell.sql"
 
 
-def test_aggregate_configuration_filename_must_match_table(tmp_path):
-    """Krever at aggregatfilen har samme navn som måltabellen."""
+def test_aggregate_table_and_sql_are_inferred_from_filename(tmp_path):
+    """Utleder tabell og SQL-sti fra aggregatfilen."""
     aggregate_directory = tmp_path / "sporringer"
     aggregate_directory.mkdir()
     (tmp_path / "konfigurasjon.yml").write_text(
@@ -130,8 +128,10 @@ definisjon:
         encoding="utf-8",
     )
 
-    with pytest.raises(ConfigError, match="samme navn"):
-        load_configuration(tmp_path / "konfigurasjon.yml")
+    config, _ = load_configuration(tmp_path / "konfigurasjon.yml")
+
+    assert config.smale_aggregater[0].tabell == "annet_navn"
+    assert config.smale_aggregater[0].sporring_sql == "sporringer/annet_navn.sql"
 
 
 def test_aggregate_names_must_be_unique_across_search_paths(tmp_path):

@@ -13,7 +13,7 @@ Use oracledb, ppy2 and pandas. All orchestration and interaction with the databa
 ## Implementation decisions
 
 1. **Program and package naming:** The Python distribution, import package, and executable are all named `statistikkprodukt`.
-2. **Configuration location:** `--config` accepts a YAML file containing the database connection, `mapper` glob patterns for finding aggregate files, and a `smale_aggregater` list selecting aggregate names. Each selected YAML file contains one aggregate under `definisjon`; its filename must match `tabell`. Resolve glob patterns and SQL paths from the configuration file's directory.
+2. **Configuration location:** `--config` accepts a YAML file containing the database connection, `mapper` glob patterns for finding aggregate files, and a `smale_aggregater` list selecting aggregate names. Each selected YAML file contains one aggregate under `definisjon`; derive `tabell` from the YAML filename and derive `sporring_sql` by replacing its suffix with `.sql`. Resolve glob patterns and SQL paths from the configuration file's directory.
 3. **Oracle connection profiles:** Allowed values for `connection.database` are `DWHP`, `DWHQ`, `DWHU`, and `DWHR`. Use placeholder mappings for host, port, and service name for now.
 4. **Secret references:** Support the URI forms shown in the configuration example. Google Secret Manager payloads are UTF-8 strings and may contain a flat JSON object. Allow `terminal://` only when stdin is a TTY. Fail if a referenced value is missing.
 5. **SQL contract:** Pass SQL files to Oracle without pre-validating that they contain a `SELECT` statement or have no bind parameters. Returned column names must match the configured `kolonne` values. Source column types come from Oracle.
@@ -84,8 +84,6 @@ smale_aggregater:
 Each selected `.yml` or `.yaml` file contains exactly one aggregate definition, named after its target table. The names listed in `smale_aggregater` must be globally unique:
 ```yaml
 definisjon:
-  tabell: ost_befolkning_alder
-  sporring_sql: sporringer/ost_befolkning_alder.sql
   periodisering: periode
   inkrementell: overskriv_alt
   tallkolonne:

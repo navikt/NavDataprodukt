@@ -233,6 +233,13 @@ def load_configuration(config_path: str | Path | None) -> tuple[Configuration, P
     aggregates: list[SmallAggregate] = []
     for aggregate_path in aggregate_paths:
         aggregate_data = _read_yaml(aggregate_path, yaml)
+        if isinstance(aggregate_data, dict) and isinstance(
+            aggregate_data.get("definisjon"), dict
+        ):
+            aggregate_data["definisjon"]["tabell"] = aggregate_path.stem
+            aggregate_data["definisjon"]["sporring_sql"] = Path(
+                os.path.relpath(aggregate_path.with_suffix(".sql"), path.parent)
+            ).as_posix()
         try:
             aggregate_config = AggregateConfiguration.model_validate(aggregate_data)
         except ValidationError as exc:
@@ -241,13 +248,7 @@ def load_configuration(config_path: str | Path | None) -> tuple[Configuration, P
                 + "\n".join(format_validation_error(error) for error in exc.errors())
             ) from exc
 
-        aggregate = aggregate_config.definisjon
-        if aggregate_path.stem.lower() != aggregate.tabell.lower():
-            raise ConfigError(
-                f"Filnavnet {aggregate_path.name} må ha samme navn som tabellen "
-                f"{aggregate.tabell}."
-            )
-        aggregates.append(aggregate)
+        aggregates.append(aggregate_config.definisjon)
 
     try:
         config = Configuration(

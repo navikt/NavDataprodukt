@@ -1,10 +1,8 @@
 definisjon:
   navn: Befolkning etter alder
   navn_en: Population by age
-  tabell: ost_befolkning_alder
   innhold: Befolkning fordelt etter periode og alder.
   innhold_en: Population by period and age.
-  sporring_sql: sporringer/ost_befolkning_alder.sql
   periodisering: periode
   inkrementell: overskriv_alt
   tallkolonne:

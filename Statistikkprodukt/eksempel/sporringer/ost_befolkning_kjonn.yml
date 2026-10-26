@@ -1,10 +1,8 @@
 definisjon:
   navn: Befolkning etter kjønn
   navn_en: Population by sex
-  tabell: ost_befolkning_kjonn
   innhold: Befolkning fordelt etter periode og kjønn.
   innhold_en: Population by period and sex.
-  sporring_sql: sporringer/ost_befolkning_kjonn.sql
   periodisering: periode
   inkrementell: overskriv_alt
   tallkolonne:
