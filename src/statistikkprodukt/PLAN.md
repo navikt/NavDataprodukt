@@ -39,9 +39,14 @@ Outline of the program's tasks:
 1. Read the configuration and validate it with Pydantic.
 2. Check whether the database is reachable unless the relevant input and output are local or this is a dry run.
 3. For each "smalt aggregat":
-   1. Run SQL to retrieve the dataset as pandas dataframe.
-   2. Run the R script, pass a dataframe, and receive a dataframe.
-   3. Store the resulting dataframe in the selected database or CSV destination.
+   1. For database writes, fetch available source and target periods and select
+      periods according to the incremental mode before reading rows. Filter the
+      SQL query using bound period values (or filter CSV input in Python).
+      `None` means all periods, as used for CSV output and dry runs; an empty
+      period list means no rows.
+   2. Run SQL to retrieve the selected dataset as pandas dataframe.
+   3. Run the R script, pass a dataframe, and receive a dataframe.
+   4. Store the resulting dataframe in the selected database or CSV destination.
 
 ## User experience
 
@@ -302,5 +307,3 @@ Create an `eksempel` folder containing `inputs/ost_befolkning_kjonn.csv`, `input
 
 TODO:
 - get source types from cursor, ikke dataframe. ignore with csv
-- determine incremental periods first, then read data for those periods only. Maybe do a select where 1=0 and compare
-- period filter

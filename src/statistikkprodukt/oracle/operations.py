@@ -34,12 +34,36 @@ def connect(configuration: DatabaseConnection) -> oracledb.Connection:
     return connection
 
 
+def _generate_in_predicate(column_name: str, elements: list[Any]) -> str:
+    binds = [f":{index}" for index in range(1, len(elements) + 1)]
+    # Oracle-versjoner før 23 begrenser IN-lister til 1000 verdier.
+    clauses = [
+        f"{column_name} IN ({', '.join(binds[start:start + 1000])})"
+        for start in range(0, len(binds), 1000)
+    ]
+    return " OR ".join(clauses) if clauses else "1 = 0"
+
 def read_query(
-        connection: oracledb.Connection, sql: str, aggregate: SmallAggregate
+        connection: oracledb.Connection,
+        sql: str,
+        aggregate: SmallAggregate,
+        *,
+        periods_to_load: list[int | str] | None = None,
 ) -> tuple[pd.DataFrame, dict[str, str]]:
     """Kjører aggregatspørringen og returnerer data med kildetyper."""
+    sql = sql.strip().removesuffix(";").rstrip()
+    parameters = []
+    if periods_to_load is not None:
+        period = validate_identifier(aggregate.periodisering)
+        parameters = [_db_value(value) for value in periods_to_load]
+        predicate = _generate_in_predicate(period, parameters)
+        sql = f"SELECT * FROM (\n{sql}\n) WHERE {predicate}"
+
     with connection.cursor() as cursor:
-        cursor.execute(sql.strip().removesuffix(";").rstrip())
+        cursor.execute(sql, parameters)
+
+    with connection.cursor() as cursor:
+        cursor.execute(sql, parameters)
 
         description = cursor.description or []
         columns = [column[0].lower() for column in description]
@@ -53,6 +77,28 @@ def read_query(
     expected_columns = validate_result_columns(columns, aggregate)
     frame = pd.DataFrame(rows, columns=columns)
     return frame[expected_columns], source_types
+
+
+def read_periods(
+    connection: oracledb.Connection, sql: str, period: str
+) -> set[int | str]:
+    """Henter bare unike, ikke-tomme perioder fra en kildespørring."""
+    period = validate_identifier(period)
+    sql = sql.strip().removesuffix(";").rstrip()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"SELECT DISTINCT {period} FROM (\n{sql}\n) WHERE {period} IS NOT NULL"
+        )
+        return {row[0] for row in cursor.fetchall()}
+
+
+def read_target_periods(
+    connection: oracledb.Connection, schema: str, aggregate: SmallAggregate
+) -> set[int | str]:
+    """Henter periodene som allerede finnes i måltabellen."""
+    table = f"{validate_identifier(schema)}.{validate_identifier(aggregate.tabell)}"
+    period = validate_identifier(aggregate.periodisering)
+    return read_periods(connection, f"SELECT {period} FROM {table}", period)
 
 
 def write_result(
@@ -85,67 +131,32 @@ def write_result(
         f"{validate_identifier(aggregate.tabell)}"
     )
 
-    period = aggregate.periodisering.lower()
-    if period not in frame.columns:
+    period_column = aggregate.periodisering.lower()
+    if period_column not in frame.columns:
         raise ValueError(f"Periodekolonnen {aggregate.periodisering} mangler i resultatet.")
 
     try:
         with connection.cursor() as cursor:
-            to_insert = _filter_for_incremental_mode(
-                cursor, qualified_table_name, aggregate, frame, period
-            )
-
-            _delete_incremental_if_overwrite(cursor, qualified_table_name, aggregate, frame, period)
-            _insert_rows(cursor, qualified_table_name, to_insert)
+            _delete_incremental_if_overwrite(cursor, qualified_table_name, frame, period_column)
+            _insert_rows(cursor, qualified_table_name, frame)
         connection.commit()
     except Exception:
         connection.rollback()
         raise
 
 
-def _delete_incremental_if_overwrite(cursor: Any, table: str, aggregate: SmallAggregate, frame: pd.DataFrame,
-                                     period: str) -> None:
+def _delete_incremental_if_overwrite(cursor: Any, table: str,
+                                     frame: pd.DataFrame,
+                                     period_column: str) -> None:
     """Sletter eksisterende rader i tabellen hvis inkrementell modus er satt til overskriv.
 
     Antar at table / period identifikatorer er gyldige Oracle identifier.
     """
-    if aggregate.inkrementell == InkrementalMode.OVERSKRIV_ALT:
-        cursor.execute(f"DELETE FROM {table}")
-    elif aggregate.inkrementell == InkrementalMode.OVERSKRIV_SISTE_PERIODE:
-        latest = frame[period].max()
-        cursor.execute(f"DELETE FROM {table} WHERE {period} = :period", period=latest)
-
-
-def _filter_for_incremental_mode(
-        cursor: Any,
-        table: str,
-        aggregate: SmallAggregate,
-        frame: pd.DataFrame,
-        period: str,
-) -> pd.DataFrame:
-    """Sletter eller filtrerer perioder etter konfigurert inkrementell modus.
-
-    Antar at table / period identifikatorer er gyldige Oracle identifier.
-    """
-    if aggregate.inkrementell == InkrementalMode.OVERSKRIV_ALT:
-        return frame
-    elif aggregate.inkrementell == InkrementalMode.OVERSKRIV_SISTE_PERIODE:
-        latest = frame[period].max()
-        return frame[frame[period] == latest]
-
-    cursor.execute(f"SELECT DISTINCT {period} FROM {table}")
-
-    existing = {row[0] for row in cursor.fetchall()}
-    incoming = set(frame[period].dropna().tolist())
-    duplicates = incoming & existing
-    if duplicates:
-        LOGGER.warning(
-            "Periodene %s finnes allerede i %s og hoppes over.",
-            ", ".join(map(str, sorted(duplicates, key=str))),
-            aggregate.tabell,
-        )
-
-    return frame[~frame[period].isin(existing)]
+    # frame is already only containing those periods that should be inserted, prefiltered for incremental mode
+    available_periods = frame[period_column].dropna().unique().tolist()
+    if available_periods:
+        predicate = _generate_in_predicate(period_column, available_periods)
+        cursor.execute(f"DELETE FROM {table} WHERE {predicate}", available_periods)
 
 
 def _insert_rows(cursor: Any, table: str, frame: pd.DataFrame) -> None:

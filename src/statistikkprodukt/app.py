@@ -6,7 +6,7 @@ import logging
 import oracledb
 import pandas as pd
 from statistikkprodukt import oracle, lokal
-from statistikkprodukt.config import Configuration, SmallAggregate, resolve_secret
+from statistikkprodukt.config import Configuration, InkrementalMode, SmallAggregate, resolve_secret
 from statistikkprodukt.prikking import prikking
 
 LOGGER = logging.getLogger(__name__)
@@ -97,11 +97,22 @@ def _process_aggregate(
 ) -> None:
     """Leser, prikker og lagrer ett småaggregat."""
     LOGGER.info("Behandler småaggregatet %s.", aggregate.tabell)
+    periods_to_load = _get_periods_to_load(
+        configuration,
+        aggregate,
+        config_directory,
+        connection,
+        input_directory=input_directory,
+        output_directory=output_directory,
+        dry_run=dry_run,
+    )
+
     data, source_types = _read_input(
         aggregate,
         config_directory,
         connection,
         input_directory=input_directory,
+        periods_to_load=periods_to_load,
     )
     LOGGER.info("Lest %d rader for %s.", len(data), aggregate.tabell)
 
@@ -133,28 +144,98 @@ def _process_aggregate(
     )
 
 
+def _get_periods_to_load(
+    configuration: Configuration,
+    aggregate: SmallAggregate,
+    config_directory: Path,
+    connection: oracledb.Connection | None,
+    *,
+    input_directory: Path | None,
+    output_directory: Path | None,
+    dry_run: bool,
+) -> list[int | str] | None:
+    """Velger perioder før innlesing; None betyr alle, en tom liste betyr ingen."""
+    if output_directory is not None or dry_run:
+        return None
+    if connection is None:
+        raise RuntimeError("Databasetilkobling mangler.")
+
+    available, existing = _fetch_periods(
+        configuration,
+        aggregate,
+        config_directory,
+        connection,
+        input_directory=input_directory,
+    )
+    if aggregate.inkrementell == InkrementalMode.OVERSKRIV_ALT:
+        return sorted(available)
+
+    missing = available - existing
+    if aggregate.inkrementell == InkrementalMode.OVERSKRIV_SISTE_PERIODE:
+        max_available = {max(existing)} if existing and max(existing) in available else set()
+        return sorted(missing.union(max_available))
+    elif aggregate.inkrementell == InkrementalMode.OVERSKRIV_IKKE:
+        return sorted(missing)
+    else:
+        raise NotImplementedError("Ukjent inkrementell modus: {aggregate.inkrementell}")
+
+
+def _fetch_periods(
+    configuration: Configuration,
+    aggregate: SmallAggregate,
+    config_directory: Path,
+    connection: oracledb.Connection,
+    *,
+    input_directory: Path | None,
+) -> tuple[set[int | str], set[int | str]]:
+    """Henter tilgjengelige perioder fra datakilden og måltabellen."""
+    if input_directory is not None:
+        directory = _resolve_directory(input_directory, config_directory)
+        data = lokal.read_csv(directory, aggregate)
+        available = set(data[aggregate.periodisering].dropna().tolist())
+    else:
+        available = oracle.read_periods(
+            connection, _read_sql(aggregate, config_directory), aggregate.periodisering
+        )
+
+    existing = oracle.read_target_periods(
+        connection, configuration.connection.schema_name, aggregate
+    )
+    return available, existing
+
+
+def _read_sql(aggregate: SmallAggregate, config_directory: Path) -> str:
+    """Leser SQL-filen relativt til konfigurasjonen."""
+    sql_path = (config_directory / aggregate.sporring_sql).resolve()
+    try:
+        return sql_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError(f"SQL-filen kan ikke leses: {sql_path}") from exc
+
+
 def _read_input(
     aggregate: SmallAggregate,
     config_directory: Path,
     connection: oracledb.Connection | None,
     *,
     input_directory: Path | None,
+    periods_to_load: list[int | str] | None = None,
 ) -> tuple[pd.DataFrame, dict[str, str]]:
     """Leser aggregatdata fra CSV eller Oracle."""
     if input_directory is not None:
         directory = _resolve_directory(input_directory, config_directory)
-        return lokal.read_csv(directory, aggregate), {}
+        data = lokal.read_csv(directory, aggregate)
+        if periods_to_load is not None:
+            data = data[data[aggregate.periodisering].isin(periods_to_load)]
+        return data, {}
     else:
         if connection is None:
             raise RuntimeError("Databasetilkobling mangler.")
 
-        sql_path = (config_directory / aggregate.sporring_sql).resolve()
-        try:
-            sql_text = sql_path.read_text(encoding="utf-8")
-        except OSError as exc:
-            raise ValueError(f"SQL-filen kan ikke leses: {sql_path}") from exc
-
-        data, types = oracle.read_query(connection, sql_text, aggregate)
+        sql_text = _read_sql(aggregate, config_directory)
+        data, types = oracle.read_query(
+            connection, sql_text, aggregate, periods_to_load=periods_to_load
+        )
         return data, types
 
 

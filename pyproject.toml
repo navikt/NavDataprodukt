@@ -2,7 +2,7 @@
 name = "statistikkprodukt"
 version = "0.1.0"
 description = "CLI for prikking av statistikkproduktaggregater"
-readme = "README.md"
+readme = "NavDataprodukt/README.md"
 authors = []
 requires-python = ">=3.12"
 dependencies = [
