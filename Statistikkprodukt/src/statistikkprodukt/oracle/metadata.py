@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 
-import logging
 import oracledb
 from oracledb import Cursor
 from statistikkprodukt.config import SmallAggregate, Metadata

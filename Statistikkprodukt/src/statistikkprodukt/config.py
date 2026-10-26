@@ -35,11 +35,11 @@ DATABASE_PROFILES = {
 _IDENTIFIER = re.compile(r"^[A-Za-z][A-Za-z0-9_$#]{0,127}$")
 
 
-
 class InkrementalMode(StrEnum):
     OVERSKRIV_IKKE = "overskriv_ikke"
     OVERSKRIV_ALT = "overskriv_alt"
     OVERSKRIV_SISTE_PERIODE = "overskriv_siste_periode"
+
 
 def validate_identifier(value: str) -> str:
     """Kontrollerer og småbokstaverer en Oracle-identifikator."""
@@ -245,7 +245,7 @@ def load_configuration(config_path: str | Path | None) -> tuple[Configuration, P
     for aggregate_path in aggregate_paths:
         aggregate_data = _read_yaml(aggregate_path, yaml)
         if isinstance(aggregate_data, dict) and isinstance(
-            aggregate_data.get("definisjon"), dict
+                aggregate_data.get("definisjon"), dict
         ):
             aggregate_data["definisjon"]["tabell"] = aggregate_path.stem
             aggregate_data["definisjon"]["sporring_sql"] = Path(
@@ -309,7 +309,7 @@ def _read_yaml(path: Path, yaml: Any) -> Any:
 
 
 def _find_aggregate_configurations(
-    patterns: list[str], aggregate_names: list[str], directory: Path
+        patterns: list[str], aggregate_names: list[str], directory: Path
 ) -> list[Path]:
     """Finner konfigurasjonsfiler for valgte aggregater i søkemønstrene."""
     paths: set[Path] = set()

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import logging
 import math
 from typing import Any
 
-import logging
 import oracledb
 import pandas as pd
 from statistikkprodukt.config import (
@@ -42,6 +42,7 @@ def _generate_in_predicate(column_name: str, elements: list[Any]) -> str:
     ]
     return " OR ".join(clauses) if clauses else "1 = 0"
 
+
 def read_query(
         connection: oracledb.Connection,
         sql: str,
@@ -74,7 +75,7 @@ def read_query(
 
 
 def read_periods(
-    connection: oracledb.Connection, sql: str, period: str
+        connection: oracledb.Connection, sql: str, period: str
 ) -> set[int | str]:
     """Henter bare unike, ikke-tomme perioder fra en kildespørring."""
     period = validate_identifier(period)
@@ -87,7 +88,7 @@ def read_periods(
 
 
 def read_target_periods(
-    connection: oracledb.Connection, schema: str, aggregate: SmallAggregate
+        connection: oracledb.Connection, schema: str, aggregate: SmallAggregate
 ) -> set[int | str]:
     """Henter periodene som allerede finnes i måltabellen."""
     table = f"{validate_identifier(schema)}.{validate_identifier(aggregate.tabell)}"

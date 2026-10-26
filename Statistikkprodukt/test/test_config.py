@@ -1,12 +1,7 @@
-from pathlib import Path
-
-import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from statistikkprodukt.app import run
 from statistikkprodukt.config import ConfigError, Configuration, load_configuration, resolve_secret
-from statistikkprodukt.oracle import parse_metadata
 
 
 def configuration():

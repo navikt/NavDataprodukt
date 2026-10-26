@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
-import logging
 import oracledb
 import pandas as pd
 from statistikkprodukt import oracle, lokal
@@ -144,14 +144,14 @@ def _process_aggregate(
 
 
 def _get_periods_to_load(
-    configuration: Configuration,
-    aggregate: SmallAggregate,
-    config_directory: Path,
-    connection: oracledb.Connection | None,
-    *,
-    input_directory: Path | None,
-    output_directory: Path | None,
-    dry_run: bool,
+        configuration: Configuration,
+        aggregate: SmallAggregate,
+        config_directory: Path,
+        connection: oracledb.Connection | None,
+        *,
+        input_directory: Path | None,
+        output_directory: Path | None,
+        dry_run: bool,
 ) -> list[int | str] | None:
     """Velger perioder før innlesing; None betyr alle, en tom liste betyr ingen."""
     if output_directory is not None or dry_run:
@@ -180,12 +180,12 @@ def _get_periods_to_load(
 
 
 def _fetch_periods(
-    configuration: Configuration,
-    aggregate: SmallAggregate,
-    config_directory: Path,
-    connection: oracledb.Connection,
-    *,
-    input_directory: Path | None,
+        configuration: Configuration,
+        aggregate: SmallAggregate,
+        config_directory: Path,
+        connection: oracledb.Connection,
+        *,
+        input_directory: Path | None,
 ) -> tuple[set[int | str], set[int | str]]:
     """Henter tilgjengelige perioder fra datakilden og måltabellen."""
     if input_directory is not None:
@@ -213,12 +213,12 @@ def _read_sql(aggregate: SmallAggregate, config_directory: Path) -> str:
 
 
 def _read_input(
-    aggregate: SmallAggregate,
-    config_directory: Path,
-    connection: oracledb.Connection | None,
-    *,
-    input_directory: Path | None,
-    periods_to_load: list[int | str] | None = None,
+        aggregate: SmallAggregate,
+        config_directory: Path,
+        connection: oracledb.Connection | None,
+        *,
+        input_directory: Path | None,
+        periods_to_load: list[int | str] | None = None,
 ) -> pd.DataFrame:
     """Leser aggregatdata fra CSV eller Oracle."""
     if input_directory is not None:

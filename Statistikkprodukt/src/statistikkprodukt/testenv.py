@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import socket
 import subprocess
@@ -8,7 +9,6 @@ import time
 from typing import Sequence, Any
 
 import docker
-import logging
 import oracledb
 from docker.errors import APIError, DockerException, ImageNotFound, NotFound
 
@@ -28,6 +28,7 @@ LOGGER_MESSAGE = (
 )
 
 LOGGER = logging.getLogger(__name__)
+
 
 class TestEnvironmentError(Exception):
     pass

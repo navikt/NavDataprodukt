@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 import oracledb
 import pandas as pd
 import pytest
-
 from statistikkprodukt import app, oracle
 from statistikkprodukt.config import InkrementalMode
 from test.test_config import configuration
@@ -71,7 +70,7 @@ def test_fetch_periods_from_source_and_target(monkeypatch, tmp_path, csv_input):
     config = configuration()
     aggregate = config.smale_aggregater[0]
     connection = MagicMock()
-    sql = "SELECT periode, region, antall FROM kilde;"
+    sql = "select periode, region, antall from kilde;"
     (tmp_path / aggregate.sporring_sql).write_text(sql)
     read_source = MagicMock(return_value={202501, 202502})
     read_target = MagicMock(return_value={202501})
@@ -160,7 +159,7 @@ def query_connection():
 @pytest.mark.parametrize("periods", [None, [], [202501], ["x') OR 1=1 --"]])
 def test_read_query_binds_period_values(periods):
     connection, cursor = query_connection()
-    sql = "SELECT periode, region, antall FROM kilde;"
+    sql = "select periode, region, antall from kilde;"
     frame = oracle.read_query(
         connection, sql, configuration().smale_aggregater[0], periods_to_load=periods
     )
@@ -184,7 +183,7 @@ def test_read_query_splits_large_period_lists():
     connection, cursor = query_connection()
     oracle.read_query(
         connection,
-        "SELECT periode, region, antall FROM kilde",
+        "select periode, region, antall from kilde",
         configuration().smale_aggregater[0],
         periods_to_load=list(range(1001)),
     )
@@ -197,9 +196,9 @@ def test_read_periods_only_selects_distinct_periods():
     connection, cursor = query_connection()
     cursor.fetchall.return_value = [(202501,), (202502,)]
 
-    assert oracle.read_periods(connection, "SELECT * FROM kilde;", "periode") == {202501, 202502}
+    assert oracle.read_periods(connection, "select * from kilde;", "periode") == {202501, 202502}
     cursor.execute.assert_called_once_with(
-        "SELECT DISTINCT periode FROM (\nSELECT * FROM kilde\n) WHERE periode IS NOT NULL"
+        "select distinct periode from (\nselect * from kilde\n) where periode is not null"
     )
 
 
@@ -207,10 +206,10 @@ def test_read_periods_only_selects_distinct_periods():
 def test_period_identifiers_are_validated(identifier):
     connection, cursor = query_connection()
     with pytest.raises(ValueError, match="Oracle-navn"):
-        oracle.read_periods(connection, "SELECT * FROM kilde", identifier)
+        oracle.read_periods(connection, "select * from kilde", identifier)
     with pytest.raises(ValueError, match="Oracle-navn"):
         oracle.read_target_periods(connection, identifier, configuration().smale_aggregater[0])
     aggregate = configuration().smale_aggregater[0].model_copy(update={"periodisering": identifier})
     with pytest.raises(ValueError, match="Oracle-navn"):
-        oracle.read_query(connection, "SELECT * FROM kilde", aggregate, periods_to_load=[202501])
+        oracle.read_query(connection, "select * from kilde", aggregate, periods_to_load=[202501])
     cursor.execute.assert_not_called()

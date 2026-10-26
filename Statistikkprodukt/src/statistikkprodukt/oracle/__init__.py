@@ -6,6 +6,7 @@ from statistikkprodukt.oracle.operations import (
     read_target_periods,
     write_result,
 )
+
 __all__ = [
     "connect",
     "parse_metadata",

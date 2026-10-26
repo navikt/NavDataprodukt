@@ -3,9 +3,8 @@ from uuid import uuid4
 import oracledb
 import pandas as pd
 import pytest
-
-from statistikkprodukt.config import InkrementalMode, Metadata, SmallAggregate
 from statistikkprodukt import app, oracle
+from statistikkprodukt.config import InkrementalMode, Metadata
 from statistikkprodukt.oracle import metadata
 from statistikkprodukt.oracle import (
     write_result,
@@ -73,9 +72,9 @@ def test_metadata_tags_are_order_independent_and_multiline():
         parse_metadata("#NAVN #NAVN To")
 
 
-
 def test_empty_database_result_does_not_inspect_or_mutate_connection():
     """Sikrer at tomme resultater ikke utfører databaseoperasjoner."""
+
     class NoDatabaseCalls:
         def __getattr__(self, name):
             """Feiler testen dersom en metode eller egenskap brukes."""
@@ -124,8 +123,8 @@ def test_insert_schema_errors_are_reported_by_oracle(oracle_connection):
 @pytest.mark.parametrize("periods", [None, [], [202502], [202501, 202502]])
 def test_read_query_filters_periods_in_oracle(oracle_connection, periods):
     sql = (
-        "SELECT 202501 AS periode, 'Oslo' AS region, 10 AS antall FROM dual "
-        "UNION ALL SELECT 202502, 'Oslo', 20 FROM dual;"
+        "select 202501 as periode, 'Oslo' as region, 10 as antall from dual "
+        "union all select 202502, 'Oslo', 20 from dual;"
     )
     aggregate = configuration().smale_aggregater[0]
     assert read_periods(oracle_connection, sql, "periode") == {202501, 202502}
@@ -139,8 +138,8 @@ def test_read_query_filters_periods_in_oracle(oracle_connection, periods):
 def test_read_query_binds_string_periods_in_oracle(oracle_connection):
     period = "x') OR 1=1 --"
     sql = (
-        "SELECT 'x'') OR 1=1 --' AS periode, 'Oslo' AS region, 10 AS antall FROM dual "
-        "UNION ALL SELECT '2025-02', 'Oslo', 20 FROM dual"
+        "select 'x'') OR 1=1 --' as periode, 'Oslo' as region, 10 as antall from dual "
+        "union all select '2025-02', 'Oslo', 20 from dual"
     )
     frame = read_query(
         oracle_connection, sql, configuration().smale_aggregater[0], periods_to_load=[period]
@@ -168,7 +167,7 @@ def test_read_target_periods_uses_configured_schema(oracle_connection):
 def test_read_query_handles_more_than_1000_periods_in_oracle(oracle_connection):
     frame = read_query(
         oracle_connection,
-        "SELECT 202501 AS periode, 'Oslo' AS region, 10 AS antall FROM dual",
+        "select 202501 as periode, 'Oslo' as region, 10 as antall from dual",
         configuration().smale_aggregater[0],
         periods_to_load=list(range(202000, 203001)),
     )
@@ -179,24 +178,24 @@ def test_read_query_handles_more_than_1000_periods_in_oracle(oracle_connection):
     ("mode", "loaded", "expected"),
     [
         (
-            "overskriv_ikke",
-            [202503],
-            [(202500, 0), (202501, 1), (202502, 2), (202503, 30)],
+                "overskriv_ikke",
+                [202503],
+                [(202500, 0), (202501, 1), (202502, 2), (202503, 30)],
         ),
         (
-            "overskriv_alt",
-            [202501, 202502, 202503],
-            [(202500, 0), (202501, 10), (202502, 20), (202503, 30)],
+                "overskriv_alt",
+                [202501, 202502, 202503],
+                [(202500, 0), (202501, 10), (202502, 20), (202503, 30)],
         ),
         (
-            "overskriv_siste_periode",
-            [202503],
-            [(202500, 0), (202501, 1), (202502, 2), (202503, 30)],
+                "overskriv_siste_periode",
+                [202503],
+                [(202500, 0), (202501, 1), (202502, 2), (202503, 30)],
         ),
     ],
 )
 def test_process_aggregate_only_masks_selected_periods(
-    oracle_connection, monkeypatch, tmp_path, mode, loaded, expected
+        oracle_connection, monkeypatch, tmp_path, mode, loaded, expected
 ):
     table = f"sb_test_{uuid4().hex[:12]}"
     config = configuration()
@@ -205,9 +204,9 @@ def test_process_aggregate_only_masks_selected_periods(
     aggregate.tabell = table
     aggregate.inkrementell = InkrementalMode(mode)
     (tmp_path / aggregate.sporring_sql).write_text(
-        "SELECT 202501 AS periode, 'Oslo' AS region, 10 AS antall FROM dual "
-        "UNION ALL SELECT 202502, 'Oslo', 20 FROM dual "
-        "UNION ALL SELECT 202503, 'Oslo', 30 FROM dual;"
+        "select 202501 as periode, 'Oslo' as region, 10 as antall from dual "
+        "union all select 202502, 'Oslo', 20 from dual "
+        "union all select 202503, 'Oslo', 30 from dual;"
     )
     original_prikking = app.prikking
     # == periods passed to prikking will be loaded in the database.

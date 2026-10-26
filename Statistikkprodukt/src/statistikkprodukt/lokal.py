@@ -1,8 +1,7 @@
+import logging
 from pathlib import Path
 
-import logging
 import pandas as pd
-
 from statistikkprodukt.config import SmallAggregate, InkrementalMode
 
 LOGGER = logging.getLogger(__name__)
@@ -30,9 +29,9 @@ def validate_columns(frame: pd.DataFrame, aggregate: SmallAggregate) -> None:
         raise ValueError(f"CSV-filen for {aggregate.tabell} har kolonner med like navn.")
 
     expected = [
-        variable.kolonne
-        for variable in aggregate.variabler
-    ] + [aggregate.tallkolonne.kolonne]
+                   variable.kolonne
+                   for variable in aggregate.variabler
+               ] + [aggregate.tallkolonne.kolonne]
     missing = [column for column in expected if column.lower() not in actual_by_lower]
     unexpected = [
         column for column in frame.columns
@@ -54,11 +53,11 @@ def validate_columns(frame: pd.DataFrame, aggregate: SmallAggregate) -> None:
 
 
 def write_csv(
-    frame: pd.DataFrame,
-    directory: Path,
-    aggregate: SmallAggregate,
-    *,
-    dry_run: bool,
+        frame: pd.DataFrame,
+        directory: Path,
+        aggregate: SmallAggregate,
+        *,
+        dry_run: bool,
 ) -> None:
     """Skriver aggregatresultatet med konfigurert inkrementell oppførsel."""
     path = directory / f"{aggregate.tabell}.csv"
@@ -67,7 +66,8 @@ def write_csv(
         return
 
     if aggregate.inkrementell != InkrementalMode.OVERSKRIV_ALT:
-        LOGGER.warning("CSV filer overskrives også når inkrementell modus er satt til %s.", aggregate.inkrementell.value)
+        LOGGER.warning("CSV filer overskrives også når inkrementell modus er satt til %s.",
+                       aggregate.inkrementell.value)
 
     if dry_run:
         print(f"Ville skrevet {len(frame)} rader til {path}.")

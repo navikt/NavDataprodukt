@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 from pathlib import Path
 
-import logging
 from statistikkprodukt import app
 from statistikkprodukt.config import load_configuration, ConfigError
 
