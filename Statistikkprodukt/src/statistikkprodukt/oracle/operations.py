@@ -63,9 +63,6 @@ def read_query(
     with connection.cursor() as cursor:
         cursor.execute(sql, parameters)
 
-    with connection.cursor() as cursor:
-        cursor.execute(sql, parameters)
-
         description = cursor.description or []
         columns = [column[0].lower() for column in description]
 

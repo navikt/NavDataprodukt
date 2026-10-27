@@ -20,7 +20,7 @@ Use oracledb, ppy2 and pandas. All orchestration and interaction with the databa
 6. **Database writes:** `tabell` is the target table name. Use the configured `kolonne` values as output column names. Do not create uniqueness constraints. Write each "smalt aggregat" in one transaction. If the result has no rows, do not change data rows; synchronize column comments for database output.
 7. **Incremental modes:** The modes operate on the configured period column:
    - `overskriv_ikke` appends periods that do not already exist and logs a warning for periods that already exist.
-   - `overskriv_alt` replaces all periods.
+   - `overskriv_alt` replaces all periods that are returned by the query. Other periods in the target are not removed.
    - `overskriv_siste_periode` replaces only the maximum period present in the result.
 8. **Period values:** Periods may be integers, such as `YYYYMM`, or strings. Assume values of the chosen type are sortable.
 9. **Schema compatibility:** Do not inspect the target schema before writing. Let Oracle report incompatible or missing target columns when inserting. Never create, alter, remove, or narrow columns.

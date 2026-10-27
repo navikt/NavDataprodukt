@@ -321,6 +321,10 @@ def _write_database(
         )
         return
 
+    metadata = None
+    if not dry_run:
+        metadata = oracle.read_metadata(connection, schema, aggregate)
+
     oracle.write_result(
         connection,
         schema,
@@ -330,7 +334,6 @@ def _write_database(
     )
     if not dry_run:
         LOGGER.info("Oppdaterer kolonnekommentarer for %s.", aggregate.tabell)
-        metadata = oracle.read_metadata(connection, schema, aggregate)
         oracle.write_column_comments(connection, schema, aggregate, metadata)
 
 

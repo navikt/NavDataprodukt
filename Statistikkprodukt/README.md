@@ -85,7 +85,7 @@ definisjon:
 
 `password` må være en hemmelighetsreferanse, ikke et passord i klartekst. Støttede former er `env://VARIABEL`, `terminal://` og `gsm://projects/.../secrets/.../versions/...`; for GSM kan siste stisegment angi en nøkkel i en flat JSON-verdi. `terminal://` virker bare når programmet kjøres fra en terminal.
 
-`inkrementell` kan være `overskriv_ikke` (legg til perioder som ikke finnes), `overskriv_alt` (erstatt alle perioder) eller `overskriv_siste_periode` (erstatt siste periode i resultatet). Bruk `--dry-run` for å se hva kjøringen vil gjøre uten å skrive til databasen eller CSV-filer.
+`inkrementell` kan være `overskriv_ikke` (legg til perioder som ikke finnes), `overskriv_alt` (erstatt alle perioder returnert fra spørringen, men ikke slett andre i smalagreggatet) eller `overskriv_siste_periode` (erstatt siste periode i resultatet). Bruk `--dry-run` for å se hva kjøringen vil gjøre uten å skrive til databasen eller CSV-filer.
 
 # Bruk av KI
 
