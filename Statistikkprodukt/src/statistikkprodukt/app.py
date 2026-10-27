@@ -45,6 +45,45 @@ def run(
             connection.close()
 
 
+def create_tables(
+        configuration: Configuration,
+        config_directory: Path,
+        *,
+        selected_tables: list[str] | None = None,
+        create_in_database: bool = False,
+) -> None:
+    """Viser DDL for tomme småaggregattabeller eller oppretter dem i Oracle."""
+    aggregates = _select_aggregates(configuration, selected_tables)
+    connection = _connect(configuration)
+    try:
+        for aggregate in aggregates:
+            schema = configuration.connection.schema_name
+            if oracle.table_exists(connection, schema, aggregate.tabell):
+                LOGGER.info(
+                    "Tabellen %s.%s finnes allerede; hopper over.",
+                    schema,
+                    aggregate.tabell,
+                )
+                continue
+
+            metadata = oracle.read_metadata(connection, schema, aggregate)
+            statements = [
+                oracle.create_table_statement(
+                    schema, aggregate, _read_sql(aggregate, config_directory)
+                ),
+                *oracle.column_comment_statements(schema, aggregate, metadata),
+            ]
+            if create_in_database:
+                with connection.cursor() as cursor:
+                    for statement in statements:
+                        cursor.execute(statement)
+                LOGGER.info("Opprettet tabellen %s.%s.", schema, aggregate.tabell)
+            else:
+                print(";\n".join(statements) + ";")
+    finally:
+        connection.close()
+
+
 def _select_aggregates(
         configuration: Configuration,
         selected_tables: list[str] | None
@@ -115,10 +154,6 @@ def _process_aggregate(
         periods_to_load=periods_to_load,
     )
     LOGGER.info("Lest %d rader for %s.", len(data), aggregate.tabell)
-
-    if connection is not None:
-        LOGGER.info("Henter metadata for %s fra Oracle.", aggregate.obt_tabell)
-        table_metadata = oracle.read_metadata(connection, configuration.connection.schema_name, aggregate)
 
     LOGGER.info("Prikker %d rader for %s.", len(data), aggregate.tabell)
     result = prikking(
@@ -290,6 +325,10 @@ def _write_database(
         result,
         dry_run=dry_run,
     )
+    if not dry_run:
+        LOGGER.info("Oppdaterer kolonnekommentarer for %s.", aggregate.tabell)
+        metadata = oracle.read_metadata(connection, schema, aggregate)
+        oracle.write_column_comments(connection, schema, aggregate, metadata)
 
 
 def _resolve_directory(directory: Path, config_directory: Path) -> Path:

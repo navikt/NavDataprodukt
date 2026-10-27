@@ -12,6 +12,7 @@ from statistikkprodukt.config import (
     SmallAggregate,
     validate_identifier,
 )
+from statistikkprodukt.oracle.metadata import TableMetadata, column_comment_statements
 
 LOGGER = logging.getLogger(__name__)
 
@@ -94,6 +95,43 @@ def read_target_periods(
     table = f"{validate_identifier(schema)}.{validate_identifier(aggregate.tabell)}"
     period = validate_identifier(aggregate.periodisering)
     return read_periods(connection, f"SELECT {period} FROM {table}", period)
+
+
+def table_exists(
+        connection: oracledb.Connection, schema: str, table_name: str
+) -> bool:
+    """Sjekker om en tabell finnes i det angitte Oracle-skjemaet."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT 1 FROM all_tables WHERE owner = :owner AND table_name = :table_name",
+            owner=schema.upper(),
+            table_name=table_name.upper(),
+        )
+        return cursor.fetchone() is not None
+
+
+def create_table_statement(schema: str, aggregate: SmallAggregate, sql: str) -> str:
+    """Lager DDL for en tom aggregattabell basert på SQL-spørringens kolonner."""
+    table = f"{validate_identifier(schema)}.{validate_identifier(aggregate.tabell)}"
+    source_sql = sql.strip().removesuffix(";").rstrip()
+    return (
+        f"CREATE TABLE {table} AS\n"
+        "SELECT source_data.*, CAST(NULL AS NUMBER(1)) AS prikket\n"
+        f"FROM (\n{source_sql}\n) source_data\n"
+        "WHERE 1 = 0"
+    )
+
+
+def write_column_comments(
+        connection: oracledb.Connection,
+        schema: str,
+        aggregate: SmallAggregate,
+        metadata: TableMetadata,
+) -> None:
+    """Oppretter eller oppdaterer målkolonnenes Oracle-kommentarer."""
+    with connection.cursor() as cursor:
+        for statement in column_comment_statements(schema, aggregate, metadata):
+            cursor.execute(statement)
 
 
 def write_result(

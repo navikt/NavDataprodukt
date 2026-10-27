@@ -17,7 +17,7 @@ from pydantic import (
     Field,
     ValidationError,
     field_validator,
-    model_validator,
+    model_validator, SecretStr,
 )
 
 
@@ -83,7 +83,7 @@ class DatabaseConnection(StrictModel):
     database: str
     schema_name: OracleIdentifier = Field(alias="schema")
     user: NonEmptyString
-    password: str
+    password: SecretStr
     timeout: int = Field(default=30, gt=0)
 
     @field_validator("database")

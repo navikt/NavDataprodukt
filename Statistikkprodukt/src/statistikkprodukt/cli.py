@@ -69,6 +69,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_aggregate_options(last)
 
+    schema = commands.add_parser("skjema", help="Vis eller opprett småaggregattabeller.")
+    schema_commands = schema.add_subparsers(dest="schema_command", required=True)
+    create = schema_commands.add_parser(
+        "opprett", help="Vis DDL eller opprett tomme småaggregattabeller."
+    )
+    create.add_argument(
+        "aggregater",
+        nargs="*",
+        metavar="TABELL",
+        help="Tabellnavn for aggregatene (standard: alle).",
+    )
+    create.add_argument(
+        "--config",
+        default=os.environ.get("STATISTIKKPRODUKT_AGGREGAT_CONFIG"),
+        help="YAML-konfigurasjonsfil (standard: STATISTIKKPRODUKT_AGGREGAT_CONFIG).",
+    )
+    create.add_argument(
+        "--db",
+        action="store_true",
+        help="Opprett tabellene i Oracle i stedet for å skrive DDL til standard output.",
+    )
+    _add_logging_options(create)
+
     testenv = commands.add_parser(
         "testenv", help="Administrer Oracle-miljøet som brukes av tester."
     )
@@ -114,6 +137,14 @@ def main() -> None:
                 input_directory=args.input_directory,
                 output_directory=args.output_directory,
                 dry_run=args.dry_run,
+            )
+        elif args.command == "skjema":
+            configuration, config_directory = load_configuration(args.config)
+            app.create_tables(
+                configuration,
+                config_directory,
+                selected_tables=args.aggregater,
+                create_in_database=args.db,
             )
         else:
             raise NotImplementedError("Ukjent kommando: " + args.command)

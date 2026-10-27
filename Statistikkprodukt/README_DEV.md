@@ -38,6 +38,8 @@ uv run pytest test/test_config.py
 
 `--config` peker på en YAML-fil med databaseinnstillinger, søkemønstre i `mapper` og listen `smale_aggregater` over hvilke aggregater som skal kjøres. Mønstrene finner aggregatfilene; de velger ikke aggregatene. Hvert aggregatnavn må være unikt og samsvare med YAML-filens navn. `tabell` utledes fra filnavnet, og `sporring_sql` blir samme relative sti med `.sql`-endelse. SQL-stien er relativ til hovedkonfigurasjonen, for eksempel gir `sporringer/ost_befolkning_alder.yml` tabellen `ost_befolkning_alder` og SQL-filen `sporringer/ost_befolkning_alder.sql`.
 
+`statistikkprodukt skjema opprett` bruker samme konfigurerte Oracle-tilkobling til SQL-kilde og måltabell. Den skriver DDL med `WHERE 1 = 0` og kolonnekommentarer til standard output; `--db` utfører DDL-en i databasen. Tabeller som allerede finnes, hoppes over og logges.
+
 ```yaml
 connection:
   database: DWHP

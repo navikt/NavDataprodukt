@@ -24,7 +24,19 @@ uv run statistikkprodukt last \
 
 Kjør med `--dry-run` for å se planlagte endringer uten å skrive filer.
 
-`--input-directory` velger CSV som kilde, og `--output-directory` velger CSV som mål. Uten disse valgene leses data fra eller skrives til Oracle. Eksisterende resultatfiler overskrives. Databasen endres ikke hvis resultatet er tomt.
+`--input-directory` velger CSV som kilde, og `--output-directory` velger CSV som mål. Uten disse valgene leses data fra eller skrives til Oracle. Eksisterende resultatfiler overskrives. Et tomt resultat endrer ikke dataradene i Oracle, men kolonnekommentarene synkroniseres ved databaseskriving.
+
+Opprett en tom måltabell basert på SQL-spørringen og skriv DDL med kolonnekommentarer til standard output:
+
+```sh
+# For alle aggregater i konfigurasjonen
+uv run statistikkprodukt skjema opprett --config eksempel/konfigurasjon.yml
+
+# For enkelte aggregater
+uv run statistikkprodukt skjema opprett --config eksempel/konfigurasjon.yml aggregat1 aggregat2
+```
+
+Kommandoen bruker den konfigurerte Oracle-tilkoblingen til å sjekke målskjemaet og hente metadata. Tabeller som finnes fra før, hoppes over. Legg til `--db` for å utføre DDL-en i Oracle i stedet for å skrive den ut. Tabellen opprettes uten rader ved hjelp av `WHERE 1 = 0`.
 
 Prikking er foreløpig ikke implementert: resultatet får en boolsk `prikket`-kolonne med verdien `True`. R-integrasjonen er klargjort, men kjøres ikke ennå.
 

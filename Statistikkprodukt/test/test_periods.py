@@ -198,7 +198,7 @@ def test_read_periods_only_selects_distinct_periods():
 
     assert oracle.read_periods(connection, "select * from kilde;", "periode") == {202501, 202502}
     cursor.execute.assert_called_once_with(
-        "select distinct periode from (\nselect * from kilde\n) where periode is not null"
+        "SELECT DISTINCT periode FROM (\nselect * from kilde\n) WHERE periode IS NOT NULL"
     )
 
 

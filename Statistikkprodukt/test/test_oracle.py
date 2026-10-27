@@ -13,6 +13,7 @@ from statistikkprodukt.oracle import (
     read_query,
     read_target_periods,
 )
+from statistikkprodukt.oracle.metadata import TableMetadata
 from test.test_config import configuration
 
 
@@ -70,6 +71,182 @@ def test_metadata_tags_are_order_independent_and_multiline():
         parse_metadata("#NAVN Én #NAVN To")
     with pytest.raises(ValueError, match="flere ganger"):
         parse_metadata("#NAVN #NAVN To")
+
+
+def test_create_tables_writes_column_comments_to_all_comments(
+        oracle_connection, monkeypatch, tmp_path
+):
+    config = configuration()
+    config.connection.schema_name = "SYSTEM"
+    aggregate = config.smale_aggregater[0]
+    aggregate.tabell = f"sb_test_{uuid4().hex[:12]}"
+    aggregate.sporring_sql = "create_test.sql"
+    (tmp_path / aggregate.sporring_sql).write_text(
+        "select 202501 as periode, 'Oslo' as region, 10 as antall from dual",
+        encoding="utf-8",
+    )
+
+    column_metadata = {
+        "periode": Metadata(
+            navn="Periode",
+            navn_en="Period",
+            innhold="Måned",
+            innhold_en="Month",
+        ),
+        "region": Metadata(
+            navn="Region",
+            navn_en="Region",
+            innhold="Geografisk område",
+            innhold_en="Geographical area",
+        ),
+        "antall": Metadata(
+            navn="Antall",
+            navn_en="Count",
+            innhold="Antall personer",
+            innhold_en="Number of people",
+        ),
+    }
+
+    class ConnectionProxy:
+        def cursor(self):
+            return oracle_connection.cursor()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(app, "_connect", lambda _: ConnectionProxy())
+    monkeypatch.setattr(
+        oracle,
+        "read_metadata",
+        lambda *args: TableMetadata(table=Metadata(), columns=column_metadata),
+    )
+
+    try:
+        app.create_tables(config, tmp_path, create_in_database=True)
+
+        with oracle_connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT column_name, comments FROM sys.all_col_comments "
+                "WHERE owner = :owner AND table_name = :table_name "
+                "AND comments IS NOT NULL",
+                owner="SYSTEM",
+                table_name=aggregate.tabell.upper(),
+            )
+            comments = dict(cursor.fetchall())
+
+        assert comments == {
+            "PERIODE": (
+                "#NAVN Periode #NAVN_EN Period #INNHOLD Måned #INNHOLD_EN Month"
+            ),
+            "REGION": (
+                "#NAVN Region #NAVN_EN Region #INNHOLD Geografisk område "
+                "#INNHOLD_EN Geographical area"
+            ),
+            "ANTALL": (
+                "#NAVN Antall #NAVN_EN Count #INNHOLD Antall personer "
+                "#INNHOLD_EN Number of people"
+            ),
+        }
+    finally:
+        with oracle_connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT 1 FROM all_tables WHERE owner = :owner AND table_name = :table_name",
+                owner="SYSTEM",
+                table_name=aggregate.tabell.upper(),
+            )
+            if cursor.fetchone():
+                cursor.execute(f"DROP TABLE SYSTEM.{aggregate.tabell} PURGE")
+        oracle_connection.commit()
+
+
+def test_write_database_writes_column_comments_to_all_comments(
+        oracle_connection, monkeypatch
+):
+    config = configuration()
+    config.connection.schema_name = "SYSTEM"
+    aggregate = config.smale_aggregater[0]
+    aggregate.tabell = f"sb_test_{uuid4().hex[:12]}"
+    metadata = TableMetadata(
+        table=Metadata(),
+        columns={
+            "periode": Metadata(
+                navn="Periode",
+                navn_en="Period",
+                innhold="Måned",
+                innhold_en="Month",
+            ),
+            "region": Metadata(
+                navn="Region",
+                navn_en="Region",
+                innhold="Geografisk område",
+                innhold_en="Geographical area",
+            ),
+            "antall": Metadata(
+                navn="Antall",
+                navn_en="Count",
+                innhold="Antall personer",
+                innhold_en="Number of people",
+            ),
+        },
+    )
+    monkeypatch.setattr(oracle, "read_metadata", lambda *args: metadata)
+
+    try:
+        with oracle_connection.cursor() as cursor:
+            cursor.execute(
+                f"CREATE TABLE SYSTEM.{aggregate.tabell} ("
+                "periode NUMBER, region VARCHAR2(100), "
+                "antall NUMBER, prikket NUMBER(1))"
+            )
+
+        app._write_database(
+            config,
+            aggregate,
+            pd.DataFrame(
+                {
+                    "periode": [202501],
+                    "region": ["Oslo"],
+                    "antall": [10],
+                    "prikket": [True],
+                }
+            ),
+            oracle_connection,
+            dry_run=False,
+        )
+
+        with oracle_connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT column_name, comments FROM sys.all_col_comments "
+                "WHERE owner = :owner AND table_name = :table_name "
+                "AND comments IS NOT NULL",
+                owner="SYSTEM",
+                table_name=aggregate.tabell.upper(),
+            )
+            comments = dict(cursor.fetchall())
+
+        assert comments == {
+            "PERIODE": (
+                "#NAVN Periode #NAVN_EN Period #INNHOLD Måned #INNHOLD_EN Month"
+            ),
+            "REGION": (
+                "#NAVN Region #NAVN_EN Region #INNHOLD Geografisk område "
+                "#INNHOLD_EN Geographical area"
+            ),
+            "ANTALL": (
+                "#NAVN Antall #NAVN_EN Count #INNHOLD Antall personer "
+                "#INNHOLD_EN Number of people"
+            ),
+        }
+    finally:
+        with oracle_connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT 1 FROM all_tables WHERE owner = :owner AND table_name = :table_name",
+                owner="SYSTEM",
+                table_name=aggregate.tabell.upper(),
+            )
+            if cursor.fetchone():
+                cursor.execute(f"DROP TABLE SYSTEM.{aggregate.tabell} PURGE")
+        oracle_connection.commit()
 
 
 def test_empty_database_result_does_not_inspect_or_mutate_connection():
@@ -219,7 +396,12 @@ def test_process_aggregate_only_masks_selected_periods(
         return original_prikking(data, **kwargs)
 
     monkeypatch.setattr(app, "prikking", mask)
-    monkeypatch.setattr(oracle, "read_metadata", lambda *args: None)
+    monkeypatch.setattr(
+        oracle,
+        "read_metadata",
+        lambda *args: TableMetadata(table=Metadata(), columns={}),
+    )
+    monkeypatch.setattr(oracle, "write_column_comments", lambda *args: None)
     try:
         with oracle_connection.cursor() as cursor:
             cursor.execute(

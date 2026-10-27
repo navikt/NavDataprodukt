@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import oracledb
 from oracledb import Cursor
-from statistikkprodukt.config import SmallAggregate, Metadata
+from statistikkprodukt.config import SmallAggregate, Metadata, validate_identifier
 
 LOGGER = logging.getLogger(__name__)
 
@@ -15,6 +15,25 @@ LOGGER = logging.getLogger(__name__)
 class TableMetadata:
     table: Metadata
     columns: dict[str, Metadata]
+
+
+def column_comment_statements(
+        schema: str, aggregate: SmallAggregate, metadata: TableMetadata
+) -> list[str]:
+    """Lager Oracle-setninger for kommentarer på aggregatets kolonner."""
+    table = f"{validate_identifier(schema)}.{validate_identifier(aggregate.tabell)}"
+    statements = []
+    for column, column_metadata in metadata.columns.items():
+        qualified_column = f"{table}.{validate_identifier(column)}"
+        comment = " ".join(
+            f"#{tag.upper()} {getattr(column_metadata, tag)}"
+            for tag in Metadata.model_fields
+        )
+        escaped_comment = comment.replace("'", "''")
+        statements.append(
+            f"COMMENT ON COLUMN {qualified_column} IS '{escaped_comment}'"
+        )
+    return statements
 
 
 def read_metadata(
