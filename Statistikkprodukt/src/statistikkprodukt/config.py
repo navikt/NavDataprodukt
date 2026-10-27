@@ -97,11 +97,12 @@ class DatabaseConnection(StrictModel):
 
     @field_validator("password")
     @classmethod
-    def require_password_reference(cls, value: str) -> str:
+    def require_password_reference(cls, value: SecretStr) -> SecretStr:
         """Krever en støttet hemmelighetsreferanse for passordet."""
-        if "://" not in value:
+        reference = value.get_secret_value()
+        if "://" not in reference:
             raise ConfigError("password må være en hemmelighetsreferanse")
-        if urlsplit(value).scheme not in {"env", "terminal", "gsm"}:
+        if urlsplit(reference).scheme not in {"env", "terminal", "gsm"}:
             raise ConfigError("password må bruke env://, terminal:// eller gsm://")
         return value
 

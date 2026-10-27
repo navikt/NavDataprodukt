@@ -5,6 +5,7 @@ from pathlib import Path
 
 import oracledb
 import pandas as pd
+from pydantic import SecretStr
 from statistikkprodukt import oracle, lokal
 from statistikkprodukt.config import Configuration, InkrementalMode, SmallAggregate, resolve_secret
 from statistikkprodukt.prikking import prikking
@@ -114,11 +115,13 @@ def _needs_db_connection(input_directory: Path | None, output_directory: Path | 
 def _connect(configuration: Configuration) -> oracledb.Connection | None:
     """Oppretter Oracle-tilkobling bare når kilden eller målet trenger den."""
     user = resolve_secret(configuration.connection.user)
-    password = resolve_secret(configuration.connection.password, password=True)
+    password = resolve_secret(
+        configuration.connection.password.get_secret_value(), password=True
+    )
     resolved_connection = configuration.connection.model_copy(
         update={
             "user": user,
-            "password": password
+            "password": SecretStr(password),
         }
     )
     return oracle.connect(resolved_connection)

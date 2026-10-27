@@ -22,7 +22,7 @@ def connect(configuration: DatabaseConnection) -> oracledb.Connection:
     profile = DATABASE_PROFILES[configuration.database]
     connection = oracledb.connect(
         user=configuration.user,
-        password=configuration.password,
+        password=configuration.password.get_secret_value(),
         dsn=oracledb.makedsn(
             profile["host"], profile["port"], service_name=profile["service_name"]
         ),
