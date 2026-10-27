@@ -316,7 +316,8 @@ def _find_aggregate_configurations(
     paths: set[Path] = set()
     for pattern in patterns:
         try:
-            matches = directory.glob(pattern)
+            file_pattern = f"{pattern}/*" if pattern == "**" or pattern.endswith("/**") else pattern
+            matches = directory.glob(file_pattern)
             paths.update(
                 path.resolve()
                 for path in matches
