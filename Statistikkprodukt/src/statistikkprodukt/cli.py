@@ -110,6 +110,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_logging_options(create)
 
+    installer_r_pakker = commands.add_parser(
+        "installer-r-pakker", help="Installer R-pakker som kreves for å kjøre prikking og andre statistikkprodukter."
+    )
+    _add_logging_options(installer_r_pakker)
+
     testenv = commands.add_parser(
         "testenv", help="Administrer Oracle-miljøet som brukes av tester."
     )
@@ -166,6 +171,8 @@ def main() -> None:
                 selected_tables=args.aggregater,
                 create_in_database=args.db,
             )
+        elif args.command == "installer-r-pakker":
+            app.installer_r_pakker()
         else:
             raise NotImplementedError("Ukjent kommando: " + args.command)
     except ConfigError as exc:

@@ -23,37 +23,24 @@ def _run_r_prikking(
         saerskilt: bool,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Kjører og samler R-resultater per periode når integrasjonen aktiveres."""
-    if periode not in data.columns:
-        raise ValueError(f"Periodekolonnen {periode} finnes ikke i datasettet.")
     import rpy2.robjects as robjects
     import rpy2.robjects.packages as rpackages
-    from rpy2.robjects.vectors import StrVector
     from rpy2.robjects import pandas2ri
     from rpy2.robjects.conversion import localconverter
 
-    # 1. Bootstrap the 'pak' installation if it doesn't exist in your R library
-    if not rpackages.isinstalled('pak'):
-        print("Installing 'pak' package in R...")
-        utils = rpackages.importr('utils')
-        # Select the primary CRAN mirror for stable network downloads
-        utils.chooseCRANmirror(ind=1)
-        utils.install_packages(StrVector(['pak']))
+    if periode not in data.columns:
+        raise ValueError(f"Periodekolonnen {periode} finnes ikke i datasettet.")
 
-    # 2. Safely import 'pak' now that it is guaranteed to be installed
-    pak = rpackages.importr('pak')
-
-    # 3. Use 'pak' to safely pull your custom Norwegian NAV package from GitHub
-    # Note: R's pak::pak() points to the underlying pkg_install function
-    print("Installing 'NavDataprodukt' via pak...")
-    # pak.pkg_install("navikt/statistikkprodukt-metode/NavDataprodukt") #, upgrade=True)
-
-    # 4. Load your new package
     importr = rpackages.importr
-    importr('NavDataprodukt')
+    try:
+        importr('NavDataprodukt')
+    except rpackages.LibraryError as exc:
+        raise RuntimeError(
+            "R-pakken 'NavDataprodukt' er ikke installert. Kjør 'statistikkprodukt installer-pakker' for å installere den."
+        ) from exc
 
     # 5. Access the environment objects
     r_prikking = robjects.r('dvh_prikking')
-    print("Successfully loaded 'dvh_prikking'!")
 
     all_results_smalt = []
     all_results_kontroll = []
@@ -64,8 +51,7 @@ def _run_r_prikking(
         else:
             subset = data[data[periode] == period]
 
-        # CRITICAL CHANGE: Use a localconverter context so rpy2 automatically
-        # translates 'subset' (Pandas DataFrame) into an R data.frame inside the function.
+        # localconverter konverterer automatisk fra R til pandas data frames
         with localconverter(robjects.default_converter + pandas2ri.converter):
             df_smalt, df_kontroll = r_prikking(
                 data=subset,

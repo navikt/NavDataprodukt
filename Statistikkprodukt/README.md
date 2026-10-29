@@ -6,11 +6,15 @@ Denne filen er brukerdokumentasjon. [README_DEV.md](README_DEV.md) er utviklerh�
 
 ## Kom i gang
 
-Installer Python 3.12 eller nyere, R og pakkene fra prosjektet:
-
+Last ned repositoriet og installer python avhengigheter:
 ```sh
 uv sync
 uv run statistikkprodukt --help
+```
+
+KNAST har allerede R installert. For å installere eller oppdatere avhengighetene for prikking, kjør:
+```sh
+uv run statistikkprodukt installer-r-pakker
 ```
 
 Kjør eksempelet, som leser to CSV-filer fra `eksempel/data_inn` og skriver resultatene til `eksempel/data_ut`, uten Oracle-tilkobling eller hemmeligheter:
