@@ -25,7 +25,7 @@ Use oracledb, ppy2 and pandas. All orchestration and interaction with the databa
 8. **Period values:** Periods may be integers, such as `YYYYMM`, or strings. Assume values of the chosen type are sortable.
 9. **Schema compatibility:** Do not inspect the target schema before writing. Let Oracle report incompatible or missing target columns when inserting. Never create, alter, remove, or narrow columns.
 10. **Metadata:** Tags may appear in any order and values may span lines until the next tag. Escaping is not supported. Duplicate tags are invalid. Metadata is not required in local CSV mode.
-11. **Local CSV mode:** Specifying `--input-directory` selects CSV input; without it, input comes from the database. Specifying `--output-directory` selects CSV output; without it, output goes to the database. Both CSV files are named `{tabell}.csv` and are distinguished by their input and output directories. OBT source data are queried only through the SQL query; `obt_tabell` identifies the source table for database metadata. Existing output files are overwritten. `--dry-run` performs no writes and prints what would have happened.
+11. **Local CSV mode:** `--kilde` selects `db` or `csv` input and defaults to `db`; `--maal` selects `db` or `csv` output and defaults to `db`. CSV files are named `{tabell}.csv` and are distinguished by their input and output directories. `--kilde-mappe` and `--maal-mappe` select those directories and default to `data_inn` and `data_ut`. OBT source data are queried only through the SQL query; `obt_tabell` identifies the source table for database metadata. Existing output files are overwritten. `--dry-run` performs no writes and prints what would have happened.
 12. **R boundary:** `prikking` currently returns the input dataframe with one new Boolean column, `prikket`, set to `True`; all input dtypes are preserved. Persist only the input columns and `prikket`. The prepared R function sources the script directly rather than loading it as an installed R package.
 13. **Language and errors:** CLI help and output, configuration validation, logs, documentation, and other user-facing errors must be in Norwegian. Exit with `0` for success, `2` for CLI or configuration errors, and `1` for operational failures.
 14. **Container:** Use an Ubuntu base image and install Python and R. Defer a Chainguard-based image.
@@ -127,17 +127,18 @@ statistikkprodukt last --dry-run
 statistikkprodukt last --log-level=WARN
 statistikkprodukt last --verbose
 
-# Skriv til CSV i stedet for database (for eksempel til output/ost_tabellnavn_beskrivende.csv)
-statistikkprodukt last --output-directory=output/
+# Skriv til CSV i stedet for database (for eksempel til data_ut/ost_tabellnavn_beskrivende.csv)
+statistikkprodukt last --maal=csv
 
 # Les fra CSV i stedet for database. Filnavnet følger verdien i `tabell`,
 # for eksempel `tabell: ost_tabellnavn_beskrivende`
-# -> input/ost_tabellnavn_beskrivende.csv
-statistikkprodukt last --input-directory=input/
+# -> data_inn/ost_tabellnavn_beskrivende.csv
+statistikkprodukt last --kilde=csv
 
-# Lokal innlesing og utskriving kan kombineres
+# Lokal innlesing og utskriving kan kombineres, valgfritt med mappe (vist er default)
 statistikkprodukt last \
-  --input-directory=input/ --output-directory=output/
+  --kilde=csv --maal=csv \
+  --kilde-mappe=data_inn --maal-mappe=data_ut
 
 # Ikke les hemmeligheter, hvis ikke det er behov for det
 

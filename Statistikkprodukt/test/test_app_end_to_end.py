@@ -1,7 +1,8 @@
+from pathlib import Path
 from uuid import uuid4
 
 from statistikkprodukt import app
-from statistikkprodukt.config import DATABASE_PROFILES, load_configuration
+from statistikkprodukt.config import DATABASE_PROFILES, load_configuration, StorageOption
 from statistikkprodukt.testenv import (
     CONTAINER_PORT,
     ORACLE_PASSWORD,
@@ -116,7 +117,7 @@ group by periode, region
         app.create_tables(
             configuration, config_directory, create_in_database=True
         )
-        app.run(configuration, config_directory)
+        app.run(configuration, config_directory, StorageOption.DB, StorageOption.DB, Path("dummy"), Path("dummy"), dry_run=False)
 
         with oracle_connection.cursor() as cursor:
             cursor.execute(

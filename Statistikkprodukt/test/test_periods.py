@@ -5,8 +5,39 @@ import oracledb
 import pandas as pd
 import pytest
 from statistikkprodukt import app, oracle
-from statistikkprodukt.config import InkrementalMode
+from statistikkprodukt.config import InkrementalMode, StorageOption
 from test.test_config import configuration
+
+
+@pytest.mark.parametrize(
+    ("kilde", "maal"),
+    [("db", "db"), ("csv", "db"), ("csv", "csv"), ("db", "csv")],
+)
+def test_run_passes_transfer_with_selected_modes(monkeypatch, tmp_path, kilde, maal):
+    config = configuration()
+    connection = MagicMock()
+    connect = MagicMock(return_value=connection)
+    transfers = []
+    monkeypatch.setattr(app, "_connect", connect)
+    monkeypatch.setattr(
+        app,
+        "_process_aggregate",
+        lambda _config, _aggregate, _directory, transfer, **_kwargs: transfers.append(
+            transfer
+        ),
+    )
+
+    app.run(config, tmp_path, StorageOption(kilde), StorageOption(maal), Path("data_inn"), Path("data_ut"), dry_run=False)
+
+    assert len(transfers) == 1
+    transfer = transfers[0]
+    assert transfer.source == kilde
+    assert transfer.target == maal
+    assert transfer.connection is (connection if kilde == "db" or maal == "db" else None)
+    if transfer.connection is not None:
+        connection.close.assert_called_once()
+    else:
+        connect.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -36,19 +67,23 @@ def test_get_periods_to_load(monkeypatch, tmp_path, mode, available, existing, e
         config,
         aggregate,
         tmp_path,
-        MagicMock(),
-        input_directory=None,
-        output_directory=None,
+        app.Transfer(
+            MagicMock(),
+            StorageOption.DB,
+            StorageOption.DB,
+            MagicMock(),
+            MagicMock()
+        ),
         dry_run=False,
     ) == expected
     fetch.assert_called_once()
 
 
 @pytest.mark.parametrize(
-    ("output_directory", "dry_run"),
-    [(Path("output"), False), (None, True), (Path("output"), True)],
+    ("target_storage", "dry_run"),
+    [(StorageOption.CSV, False), (StorageOption.DB, True), (StorageOption.CSV, True)],
 )
-def test_all_periods_without_database_writes(monkeypatch, tmp_path, output_directory, dry_run):
+def test_all_periods_without_database_writes(monkeypatch, tmp_path, target_storage, dry_run):
     config = configuration()
     fetch = MagicMock(side_effect=AssertionError("Uventet periodeoppslag"))
     monkeypatch.setattr(app, "_fetch_periods", fetch)
@@ -57,9 +92,13 @@ def test_all_periods_without_database_writes(monkeypatch, tmp_path, output_direc
         config,
         config.smale_aggregater[0],
         tmp_path,
-        None,
-        input_directory=Path("input"),
-        output_directory=output_directory,
+        app.Transfer(
+            MagicMock(),
+            StorageOption.DB,
+            target_storage,
+            Path("input"),
+            Path("output")
+        ),
         dry_run=dry_run,
     ) is None
     fetch.assert_not_called()
@@ -87,8 +126,13 @@ def test_fetch_periods_from_source_and_target(monkeypatch, tmp_path, csv_input):
         config,
         aggregate,
         tmp_path,
-        connection,
-        input_directory=Path("input") if csv_input else None,
+        app.Transfer(
+            connection,
+            StorageOption.CSV if csv_input else StorageOption.DB,
+            StorageOption.DB,
+            Path("input"),
+            Path("output")
+        ),
     ) == ({202501, 202502}, {202501})
     read_target.assert_called_once_with(connection, "test", aggregate)
     if csv_input:
@@ -107,8 +151,13 @@ def test_read_csv_period_selection(tmp_path, periods):
     data = app._read_input(
         aggregate,
         tmp_path,
-        None,
-        input_directory=tmp_path,
+        app.Transfer(
+            None,
+            StorageOption.CSV,
+            StorageOption.CSV,
+            tmp_path,
+            Path("dummy")
+        ),
         periods_to_load=periods,
     )
     assert data["periode"].tolist() == ([202501, 202502] if periods is None else periods)
@@ -133,9 +182,13 @@ def test_process_selects_periods_before_reading(monkeypatch, tmp_path, periods):
         config,
         aggregate,
         tmp_path,
-        MagicMock(),
-        input_directory=None,
-        output_directory=None,
+        app.Transfer(
+            MagicMock(),
+            StorageOption.DB,
+            StorageOption.DB,
+            Path("dummy"),
+            Path("dummy")
+        ),
         dry_run=False,
     )
 

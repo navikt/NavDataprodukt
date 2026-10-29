@@ -41,6 +41,11 @@ class InkrementalMode(StrEnum):
     OVERSKRIV_SISTE_PERIODE = "overskriv_siste_periode"
 
 
+class StorageOption(StrEnum):
+    DB = "db"
+    CSV = "csv"
+
+
 def validate_identifier(value: str) -> str:
     """Kontrollerer og småbokstaverer en Oracle-identifikator."""
     if not _IDENTIFIER.fullmatch(value):

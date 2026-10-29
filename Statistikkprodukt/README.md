@@ -13,18 +13,19 @@ uv sync
 uv run statistikkprodukt --help
 ```
 
-Kjør eksempelet, som leser to CSV-filer fra `eksempel/inputs/` og skriver resultatene til `eksempel/outputs/`, uten Oracle-tilkobling eller hemmeligheter:
+Kjør eksempelet, som leser to CSV-filer fra `eksempel/data_inn` og skriver resultatene til `eksempel/data_ut`, uten Oracle-tilkobling eller hemmeligheter:
 
 ```sh
+cd Statistikkprodukt/eksempel
 uv run statistikkprodukt last \
-  --config eksempel/konfigurasjon.yml \
-  --input-directory inputs/ \
-  --output-directory outputs/
+  --config konfigurasjon.yml \
+  --kilde=csv \
+  --maal=csv
 ```
 
 Kjør med `--dry-run` for å se planlagte endringer uten å skrive filer.
 
-`--input-directory` velger CSV som kilde, og `--output-directory` velger CSV som mål. Uten disse valgene leses data fra eller skrives til Oracle. Eksisterende resultatfiler overskrives. Et tomt resultat endrer ikke dataradene i Oracle, men kolonnekommentarene synkroniseres ved databaseskriving.
+`--kilde` og `--maal` velger hver for seg `db` eller `csv`; begge har `db` som standard. CSV-mappene kan angis med `--kilde-mappe` og `--maal-mappe`; standardene er `data_inn` og `data_ut`. Eksisterende resultatfiler overskrives. 
 
 Opprett en tom måltabell basert på SQL-spørringen og skriv DDL med kolonnekommentarer til standard output:
 

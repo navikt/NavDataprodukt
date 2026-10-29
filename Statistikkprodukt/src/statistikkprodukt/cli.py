@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 from statistikkprodukt import app
-from statistikkprodukt.config import load_configuration, ConfigError
+from statistikkprodukt.config import load_configuration, ConfigError, StorageOption
 
 LOG_LEVELS = ("DEBUG", "INFO", "WARN", "ERROR")
 LOGGER = logging.getLogger(__name__)
@@ -43,14 +43,32 @@ def _add_aggregate_options(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--dry-run", action="store_true", help="Vis hva som ville blitt gjort uten å skrive data.")
     parser.add_argument(
-        "--input-directory",
-        type=Path,
-        help="Les CSV fra denne mappen. Uten valget leses data fra Oracle.",
+        "--kilde",
+        type=StorageOption,
+        choices=list(StorageOption),
+        default=StorageOption.DB,
+        help="Velg datakilde: db eller csv (standard: db).",
     )
     parser.add_argument(
-        "--output-directory",
+        "--maal",
+        type=StorageOption,
+        choices=list(StorageOption),
+        default=StorageOption.DB,
+        help="Velg mål for resultatet: db eller csv (standard: db).",
+    )
+    parser.add_argument(
+        "--kilde-mappe",
         type=Path,
-        help="Skriv CSV til denne mappen. Uten valget skrives resultatet til Oracle.",
+        default=Path("data_inn"),
+        metavar="MAPPE",
+        help="Mappe med CSV-filer når --kilde=csv (standard: data_inn).",
+    )
+    parser.add_argument(
+        "--maal-mappe",
+        type=Path,
+        default=Path("data_ut"),
+        metavar="MAPPE",
+        help="Mappe for CSV-filer når --maal=csv (standard: data_ut).",
     )
     _add_logging_options(parser)
 
@@ -133,9 +151,11 @@ def main() -> None:
             app.run(
                 configuration,
                 config_directory,
+                args.kilde,
+                args.maal,
+                args.kilde_mappe,
+                args.maal_mappe,
                 selected_tables=args.aggregater,
-                input_directory=args.input_directory,
-                output_directory=args.output_directory,
                 dry_run=args.dry_run,
             )
         elif args.command == "skjema":

@@ -1,10 +1,11 @@
+from pathlib import Path
 from uuid import uuid4
 
 import oracledb
 import pandas as pd
 import pytest
 from statistikkprodukt import app, oracle
-from statistikkprodukt.config import InkrementalMode, Metadata
+from statistikkprodukt.config import InkrementalMode, Metadata, StorageOption
 from statistikkprodukt.oracle import metadata
 from statistikkprodukt.oracle import (
     write_result,
@@ -210,7 +211,13 @@ def test_write_database_writes_column_comments_to_all_comments(
                     "prikket": [True],
                 }
             ),
-            oracle_connection,
+            app.Transfer(
+                oracle_connection,
+                StorageOption.DB,
+                StorageOption.DB,
+                Path("dummy"),
+                Path("dummy")
+            ),
             dry_run=False,
         )
 
@@ -424,9 +431,13 @@ def test_process_aggregate_only_masks_selected_periods(
             config,
             aggregate,
             tmp_path,
-            oracle_connection,
-            input_directory=None,
-            output_directory=None,
+            app.Transfer(
+                oracle_connection,
+                StorageOption.DB,
+                StorageOption.DB,
+                Path("dummy"),
+                Path("dummy"),
+            ),
             dry_run=False,
         )
 
