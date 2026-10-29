@@ -46,8 +46,12 @@ Konfigurasjonen er delt i én felles fil og én YAML-fil per småaggregat. Den f
 
 ```yaml
 connection:
-  # Velger forhåndsdefinerte verdier for vert, port og tjenestenavn.
+  # Velg enten en profil ...
   database: DWHP
+  # ... eller oppgi alle verdiene direkte i stedet:
+  # host: oracle.example.no
+  # port: 1521
+  # service: ORCL
   schema: mitt_skjemanavn
   # Bruker kan oppgis direkte eller hentes fra en støttet hemmelighetskilde.
   user: gsm://projects/my_project/secrets/my_secret/versions/latest/username

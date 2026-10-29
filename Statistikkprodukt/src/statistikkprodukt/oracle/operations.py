@@ -7,7 +7,6 @@ from typing import Any
 import oracledb
 import pandas as pd
 from statistikkprodukt.config import (
-    DATABASE_PROFILES,
     DatabaseConnection,
     SmallAggregate,
     validate_identifier,
@@ -19,13 +18,11 @@ LOGGER = logging.getLogger(__name__)
 
 def connect(configuration: DatabaseConnection) -> oracledb.Connection:
     """Kobler til konfigurert Oracle-database og velger skjema."""
-    profile = DATABASE_PROFILES[configuration.database]
+    host, port, service = configuration.oracle_parameters()
     connection = oracledb.connect(
         user=configuration.user,
         password=configuration.password.get_secret_value(),
-        dsn=oracledb.makedsn(
-            profile["host"], profile["port"], service_name=profile["service_name"]
-        ),
+        dsn=oracledb.makedsn(host, port, service_name=service),
         tcp_connect_timeout=configuration.timeout,
     )
 

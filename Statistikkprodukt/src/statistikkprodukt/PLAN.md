@@ -59,8 +59,12 @@ Do not change the database schema. If an insert is incompatible with the existin
 The shared configuration file contains connection settings and patterns for finding aggregate definitions:
 ```yaml
 connection:
-  # selects preconfigured values for host, port, and service_name
+  # Select either a predefined profile ...
   database: DWHP
+  # ... or specify all connection values directly instead:
+  # host: oracle.example.no
+  # port: 1521
+  # service: myservice
   schema: my_schema # Set this as session default when connecting
   # Values may be literal strings or references using one of these forms:
   # user: my_username

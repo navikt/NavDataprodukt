@@ -42,7 +42,12 @@ uv run pytest test/test_config.py
 
 ```yaml
 connection:
+  # Velg enten profil ...
   database: DWHP
+  # ... eller oppgi alle verdiene direkte i stedet:
+  # host: oracle.example.no
+  # port: 1521
+  # service: ORCL
   schema: STATISTIKKPRODUKT
   user: env://ORACLE_USER
   password: env://ORACLE_PASSWORD
