@@ -157,7 +157,7 @@ def main() -> None:
     except Exception as exc:
         _report_error(
             f"{exc}. Bruk --log-level=DEBUG for å se detaljer.",
-            debug=args.log_level == "DEBUG",
+            debug=(args.command == "testenv" or args.log_level == "DEBUG"),
         )
         raise SystemExit(1) from None
 
