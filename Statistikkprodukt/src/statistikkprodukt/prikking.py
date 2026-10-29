@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pandas as pd
 
 
@@ -47,7 +45,7 @@ def _run_r_prikking(
     # 3. Use 'pak' to safely pull your custom Norwegian NAV package from GitHub
     # Note: R's pak::pak() points to the underlying pkg_install function
     print("Installing 'NavDataprodukt' via pak...")
-    #pak.pkg_install("navikt/statistikkprodukt-metode/NavDataprodukt") #, upgrade=True)
+    # pak.pkg_install("navikt/statistikkprodukt-metode/NavDataprodukt") #, upgrade=True)
 
     # 4. Load your new package
     importr = rpackages.importr

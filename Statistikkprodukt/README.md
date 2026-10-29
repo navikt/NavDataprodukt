@@ -6,14 +6,14 @@ Denne filen er brukerdokumentasjon. [README_DEV.md](README_DEV.md) er utviklerh�
 
 ## Kom i gang
 
-Installer Python 3.14 eller nyere, R og pakkene fra prosjektet:
+Installer Python 3.12 eller nyere, R og pakkene fra prosjektet:
 
 ```sh
 uv sync
 uv run statistikkprodukt --help
 ```
 
-Kjør eksemepelet, som leser to CSV-filer fra `eksempel/inputs/` og skriver resultatene til `eksempel/outputs/`, uten Oracle-tilkobling eller hemmeligheter:
+Kjør eksempelet, som leser to CSV-filer fra `eksempel/inputs/` og skriver resultatene til `eksempel/outputs/`, uten Oracle-tilkobling eller hemmeligheter:
 
 ```sh
 uv run statistikkprodukt last \
@@ -24,84 +24,68 @@ uv run statistikkprodukt last \
 
 Kjør med `--dry-run` for å se planlagte endringer uten å skrive filer.
 
-Stiene til SQL filer i YAML-filen og CSV-mappene regnes fra mappen der konfigurasjonsfilen ligger. Å angi `--input-directory` velger CSV som kilde, og `--output-directory` velger CSV som mål; uten disse valgene brukes Oracle for input eller output, eller begge. Eksisterende resultatfiler overskrives på disk, oppførsel i databasen avhenger fra konfigurasjonen. 
+`--input-directory` velger CSV som kilde, og `--output-directory` velger CSV som mål. Uten disse valgene leses data fra eller skrives til Oracle. Eksisterende resultatfiler overskrives. Et tomt resultat endrer ikke dataradene i Oracle, men kolonnekommentarene synkroniseres ved databaseskriving.
 
-Prikking er foreløpig deaktivert: resultatet får en boolsk `prikket`-kolonne med verdien `True`. R-integrasjonen er klargjort, men kjøres ikke ennå.
+Opprett en tom måltabell basert på SQL-spørringen og skriv DDL med kolonnekommentarer til standard output:
+
+```sh
+# For alle aggregater i konfigurasjonen
+uv run statistikkprodukt skjema opprett --config eksempel/konfigurasjon.yml
+
+# For enkelte aggregater
+uv run statistikkprodukt skjema opprett --config eksempel/konfigurasjon.yml aggregat1 aggregat2
+```
+
+Kommandoen bruker den konfigurerte Oracle-tilkoblingen til å sjekke målskjemaet og hente metadata. Tabeller som finnes fra før, hoppes over. Legg til `--db` for å utføre DDL-en i Oracle i stedet for å skrive den ut. Tabellen opprettes uten rader ved hjelp av `WHERE 1 = 0`.
+
+Prikking er foreløpig ikke implementert: resultatet får en boolsk `prikket`-kolonne med verdien `True`. R-integrasjonen er klargjort, men kjøres ikke ennå.
 
 ## Konfigurasjon
 
+Konfigurasjonen er delt i én felles fil og én YAML-fil per småaggregat. Den felles filen inneholder databasetilkobling, søkemønstre for aggregatfilene og navnene på aggregatene som skal kjøres:
+
 ```yaml
 connection:
-  # prekonfigurerte verdier for host, port, and service_name
+  # Velger forhåndsdefinerte verdier for vert, port og tjenestenavn.
   database: DWHP
-  schema: my_schema # Hvor i databasen resultatene skal lagres.
-  # Fast streng:
-  # user: my_username
-  # Les fra miljøvariabel:
-  # user: env://MY_USER_ENV_NAME
-  # Les fra terminal prompt:
-  # user: terminal://
-  # Les fra Google Secret Manager:
-  # user: gsm://projects/my_project/secrets/my_secret/versions/latest
-  # A final path segment extracts a key from a flat JSON object:
+  schema: mitt_skjemanavn
+  # Bruker kan oppgis direkte eller hentes fra en støttet hemmelighetskilde.
   user: gsm://projects/my_project/secrets/my_secret/versions/latest/username
-  # Passord må aldri lagres direkte i konfigurasjonsfilen:
   password: gsm://projects/my_project/secrets/my_secret/versions/latest/password
-  
-  timeout: 30 # optional, default
+  timeout: 30
 
-# Denne delen konfigurerer hva som skal gjøres
+mapper:
+  - aggregater/**
+
 smale_aggregater:
-  - navn: Lekmansspråk
-    navn_en: Human readable name
-    tabell: ost_TABELLNAVN_BESKRIVENDE
-    innhold: >
-       Dette er en innhold av småaggregater. Bakgrunn, begrensninger, osv...
-    innhold_en: English description.
-    # sti til SQL spørringen som definerer aggregatet
-    sporring_sql: sporringer/ost_tabellnavn.sql
-    periodisering: periode # kolonnen som angir tidsperiode
-    # Dersom en periode er allerede lastet:
-    # - overskriv_ikke: beholder eksisterende rader
-    # - overskriv_alt: overskrive alle eksisterende rader
-    # - overskriv_siste_periode: overskrive eksisterende rader for siste periode
-    inkrementell: overskriv_alt
-    tallkolonne:
-      navn: Antall A
-      kolonne: antall_a
-      innhold: >
-        Antall A måler blablabla
-
-    # argumenter som sendes videre til R skriptet
-    formula: "~ PERIODE * REGION * KJONN * ALDER"
-    prikking: true
-    saerskilt: false  
-
-    variabler:
-      - navn: Region
-        navn_en: Region
-        kolonne: region
-        innhold: >
-          Denne variablen beskriver regionen som antall_a gjelder for.
-          
-          I tilfellet av sammenslåing av regioner vil den inneholde dagens verdi. 
-        innhold_en: English description.
-
-      - navn: Periode
-        navn_en: Period
-        kolonne: periode
-        innhold: >
-          Denne variablen perioden som antall_a gjelder for på månedsgranularitet.
-
-          Formatet er YYYYMM.
-        innhold_en: English description.
+  - ost_befolkning_alder
+  - ost_befolkning_kjonn
 ```
 
-Dersom man ikke spesifiserer noen av følgende felter, lastets verdiene inn fra Oracle kommentarer som må bruke tagging:
-- navn: `#NAVN`
-- navn_en: `#NAVN_EN`
-- innhold: `#INNHOLD`
-- innhold: `#INNHOLD_EN`
+Hvert navn i `smale_aggregater` må finnes blant YAML-filene som treffes av `mapper`. Hver aggregatfil inneholder én definisjon under `definisjon`. Filnavnet bestemmer måltabellen (`tabell`) og navnet på SQL-filen: `sporringer/ost_befolkning_alder.yml` gir tabellen `ost_befolkning_alder` og SQL-filen `sporringer/ost_befolkning_alder.sql`. Ikke angi `tabell` eller `sporring_sql` i aggregatfilen.
+
+Eksempel på aggregatfil:
+
+```yaml
+definisjon:
+  obt_tabell: befolkning
+  periodisering: periode  # kolonnenavn for periodisering
+  inkrementell: overskriv_alt  # overskriv_ikke, overskriv_alt, overskriv_siste_periode
+  tallkolonne:
+    kolonne: antall
+  formula: "~ periode * alder"
+  prikking: true
+  saerskilt: false
+  variabler:
+    - kolonne: periode
+    - kolonne: alder
+```
+
+`obt_tabell` angir OBT-tabellen som er datagrunnlaget som det smale aggregatet bygges fra i SQL spørringen. Den brukes når metadata mangler i YAML-filen. Den kan oppgis som `SKJEMA.TABELL`; uten skjema brukes verdien fra `connection.schema`. Metadatafeltene `navn`, `navn_en`, `innhold` og `innhold_en` er valgfrie når de finnes i databasekommentarene. Kommentarene må bruke taggene `#NAVN`, `#NAVN_EN`, `#INNHOLD` og `#INNHOLD_EN`. Metadata er ikke nødvendig når både input og output er lokale CSV-filer.
+
+`password` må være en hemmelighetsreferanse, ikke et passord i klartekst. Støttede former er `env://VARIABEL`, `terminal://` og `gsm://projects/.../secrets/.../versions/...`; for GSM kan siste stisegment angi en nøkkel i en flat JSON-verdi. `terminal://` virker bare når programmet kjøres fra en terminal.
+
+`inkrementell` kan være `overskriv_ikke` (legg til perioder som ikke finnes), `overskriv_alt` (erstatt alle perioder returnert fra spørringen, men ikke slett andre i smalagreggatet) eller `overskriv_siste_periode` (erstatt siste periode i resultatet). Bruk `--dry-run` for å se hva kjøringen vil gjøre uten å skrive til databasen eller CSV-filer.
 
 # Bruk av KI
 

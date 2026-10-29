@@ -1,16 +1,17 @@
 # Instruksjoner for Copilot
 
-Dette prosjektet leverer Python-CLI-en `statistikkprodukt`; kommando- og feilmeldinger skal være på norsk. Følg `src/statistikkprodukt/PLAN.md` for domenekrav og arkitektur.
+Dette prosjektet leverer Python-CLI-en `statistikkprodukt`; kommando- og feilmeldinger skal være på norsk. Følg `Statistikkprodukt/src/statistikkprodukt/PLAN.md` for domenekrav og arkitektur.
 
+Python biblioteket er i `Statistikkprodukt/`. `pyproject.toml` er i root mappen.
 
 Kjør enhetstester sånn:
 ```sh
-uv run statistikkprodukt testenv pytest
+uv run --frozen statistikkprodukt testenv pytest
 ```
 
 Med argumenter:
 ```sh
-uv run statistikkprodukt testenv pytest -- -q
+uv run --frozen statistikkprodukt testenv pytest -- -q
 ```
 
 Oracle-testcontaineren må startes og stoppes utenfor sandkassen med `statistikkprodukt testenv setup` og `statistikkprodukt testenv teardown`. Ikke start Docker-containere direkte fra sandkassen.

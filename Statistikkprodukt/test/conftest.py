@@ -4,8 +4,6 @@ import socket
 import oracledb
 import pytest
 from sqlalchemy.engine import make_url
-from testcontainers.community.oracle import OracleDbContainer
-
 from statistikkprodukt.testenv import (
     CONTAINER_IMAGE,
     CONTAINER_NAME,
@@ -15,6 +13,7 @@ from statistikkprodukt.testenv import (
     ORACLE_USER,
     TZ,
 )
+from testcontainers.community.oracle import OracleDbContainer
 
 EXTERNAL = os.environ.get("STATISTIKKPRODUKT_TESTENV_EXTERNAL") == "1"
 

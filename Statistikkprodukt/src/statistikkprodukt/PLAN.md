@@ -13,19 +13,19 @@ Use oracledb, ppy2 and pandas. All orchestration and interaction with the databa
 ## Implementation decisions
 
 1. **Program and package naming:** The Python distribution, import package, and executable are all named `statistikkprodukt`.
-2. **Configuration location:** `--config` accepts a YAML file. Resolve relative paths from the directory containing that file.
+2. **Configuration location:** `--config` accepts a YAML file containing the database connection, `mapper` glob patterns for finding aggregate files, and a `smale_aggregater` list selecting aggregate names. Each selected YAML file contains one aggregate under `definisjon`; derive `tabell` from the YAML filename and derive `sporring_sql` by replacing its suffix with `.sql`. Resolve glob patterns and SQL paths from the configuration file's directory.
 3. **Oracle connection profiles:** Allowed values for `connection.database` are `DWHP`, `DWHQ`, `DWHU`, and `DWHR`. Use placeholder mappings for host, port, and service name for now.
 4. **Secret references:** Support the URI forms shown in the configuration example. Google Secret Manager payloads are UTF-8 strings and may contain a flat JSON object. Allow `terminal://` only when stdin is a TTY. Fail if a referenced value is missing.
-5. **SQL contract:** Pass SQL files to Oracle without pre-validating that they contain a `SELECT` statement or have no bind parameters. Returned column names must match the configured `kolonne` values. Source column types come from Oracle.
-6. **Database writes:** `tabell` is the target table name. Use the configured `kolonne` values as output column names. Do not create uniqueness constraints. Write each "smalt aggregat" in one transaction. If the result has no rows, make no database changes.
+5. **SQL contract:** Pass SQL files to Oracle without pre-validating that they contain a `SELECT` statement or have no bind parameters. Do not prevalidate result columns or target column types; Oracle reports incompatibilities when inserting.
+6. **Database writes:** `tabell` is the target table name. Use the configured `kolonne` values as output column names. Do not create uniqueness constraints. Write each "smalt aggregat" in one transaction. If the result has no rows, do not change data rows; synchronize column comments for database output.
 7. **Incremental modes:** The modes operate on the configured period column:
    - `overskriv_ikke` appends periods that do not already exist and logs a warning for periods that already exist.
-   - `overskriv_alt` replaces all periods.
+   - `overskriv_alt` replaces all periods that are returned by the query. Other periods in the target are not removed.
    - `overskriv_siste_periode` replaces only the maximum period present in the result.
 8. **Period values:** Periods may be integers, such as `YYYYMM`, or strings. Assume values of the chosen type are sortable.
-9. **Schema compatibility:** Use `dba_tables`, `dba_columns`, `dba_tab_comments`, and `dba_col_comments`; all database users in the target environment may read these views. Fail for all schema differences; never create, alter, remove, or narrow columns.
+9. **Schema compatibility:** Do not inspect the target schema before writing. Let Oracle report incompatible or missing target columns when inserting. Never create, alter, remove, or narrow columns.
 10. **Metadata:** Tags may appear in any order and values may span lines until the next tag. Escaping is not supported. Duplicate tags are invalid. Metadata is not required in local CSV mode.
-11. **Local CSV mode:** Specifying `--input-directory` selects CSV input; without it, input comes from the database. Specifying `--output-directory` selects CSV output; without it, output goes to the database. Both CSV files are named `{tabell}.csv` and are distinguished by their input and output directories. OBT source tables are referenced only inside the SQL query. Existing output files are overwritten. `--dry-run` performs no writes and prints what would have happened.
+11. **Local CSV mode:** Specifying `--input-directory` selects CSV input; without it, input comes from the database. Specifying `--output-directory` selects CSV output; without it, output goes to the database. Both CSV files are named `{tabell}.csv` and are distinguished by their input and output directories. OBT source data are queried only through the SQL query; `obt_tabell` identifies the source table for database metadata. Existing output files are overwritten. `--dry-run` performs no writes and prints what would have happened.
 12. **R boundary:** `prikking` currently returns the input dataframe with one new Boolean column, `prikket`, set to `True`; all input dtypes are preserved. Persist only the input columns and `prikket`. The prepared R function sources the script directly rather than loading it as an installed R package.
 13. **Language and errors:** CLI help and output, configuration validation, logs, documentation, and other user-facing errors must be in Norwegian. Exit with `0` for success, `2` for CLI or configuration errors, and `1` for operational failures.
 14. **Container:** Use an Ubuntu base image and install Python and R. Defer a Chainguard-based image.
@@ -39,19 +39,24 @@ Outline of the program's tasks:
 1. Read the configuration and validate it with Pydantic.
 2. Check whether the database is reachable unless the relevant input and output are local or this is a dry run.
 3. For each "smalt aggregat":
-   1. Run SQL to retrieve the dataset as pandas dataframe.
-   2. Run the R script, pass a dataframe, and receive a dataframe.
-   3. Store the resulting dataframe in the selected database or CSV destination.
+   1. For database writes, fetch available source and target periods and select
+      periods according to the incremental mode before reading rows. Filter the
+      SQL query using bound period values (or filter CSV input in Python).
+      `None` means all periods, as used for CSV output and dry runs; an empty
+      period list means no rows.
+   2. Run SQL to retrieve the selected dataset as pandas dataframe.
+   3. Run the R script, pass a dataframe, and receive a dataframe.
+   4. Store the resulting dataframe in the selected database or CSV destination.
 
 ## User experience
 
 Keep in mind that the audience is not technical. Don't expose exceptions, unless --log-level=DEBUG is specified. Show informative error messages, utilize pydantic. No unknown keys. All in Norwegian.
 
-Do not change the database schema. If there is a mismatch, fail. Use `dba_tables` and `dba_columns` to check for compatibility.
+Do not change the database schema. If an insert is incompatible with the existing schema, let Oracle fail the insert and roll back the transaction.
 
 ## Configuration
 
-Example for the configuration file
+The shared configuration file contains connection settings and patterns for finding aggregate definitions:
 ```yaml
 connection:
   # selects preconfigured values for host, port, and service_name
@@ -69,48 +74,30 @@ connection:
   
   timeout: 30 # optional, default
 
-# Denne delen konfigurerer hva som skal gjøres
+mapper:
+  - aggregater/**
 smale_aggregater:
-  - navn: Lekmansspråk
-    navn_en: Human readable name
-    tabell: ost_TABELLNAVN_BESKRIVENDE
-    innhold: >
-       Dette er en innhold av småaggregater. Bakgrunn, begrensninger, osv...
-    innhold_en: English description.
-    # sti til SQL spørringen som definerer aggregatet
-    sporring_sql: sporringer/ost_tabellnavn.sql
-    periodisering: periode # kolonnen som angir tidsperiode
-    inkrementell: overskriv_ikke | overskriv_alt | overskriv_siste_periode
-    tallkolonne:
-      navn: Antall A
-      kolonne: antall_a
-      innhold: >
-        Antall A måler blablabla
-
-    # argumenter som sendes videre til R skriptet
-    formula: "~ PERIODE * REGION * KJONN * ALDER"
-    prikking: true
-    saerskilt: false  
-
-    variabler:
-      - navn: Region
-        navn_en: Region
-        kolonne: region
-        innhold: >
-          Denne variablen beskriver regionen som antall_a gjelder for.
-          
-          I tilfellet av sammenslåing av regioner vil den inneholde dagens verdi. 
-
-      - navn: Periode
-        navn_en: Period
-        kolonne: periode
-        innhold: >
-          Denne variablen perioden som antall_a gjelder for på månedsgranularitet.
-
-          Formatet er YYYYMM.
+  - ost_befolkning_alder
+  - ost_befolkning_kjonn
 ```
 
-navn, navn_en, innhold and innhold_en are optional. If they are not specified, read the database comments (dba_tab_comments and dba_col_comments) and parse out tags. For eksampel, a comment could be `#NAVN Min variabel #NAVN_EN My variable #INNHOLD Min innhold #INNHOLD_EN English description`. Fail if a field is missing in both the yml file and the database. Use the logging library, log (INFO) which source is taken. If --verbose is specified, log the values as well.
+Each selected `.yml` or `.yaml` file contains exactly one aggregate definition, named after its target table. The names listed in `smale_aggregater` must be globally unique:
+```yaml
+definisjon:
+  obt_tabell: obt_befolkning
+  periodisering: periode
+  inkrementell: overskriv_alt
+  tallkolonne:
+    kolonne: antall
+  formula: "~ periode * alder"
+  prikking: true
+  saerskilt: false
+  variabler:
+    - kolonne: periode
+    - kolonne: alder
+```
+
+`obt_tabell` names the OBT source table whose table and column comments supply missing metadata. It may be schema-qualified, for example `OBT.BEFOLKNING_ALDER`; an unqualified name uses the configured connection schema. `navn`, `navn_en`, `innhold` and `innhold_en` are optional. If they are not specified, read the database comments (`dba_tab_comments` and `dba_col_comments`) for `obt_tabell` and parse out tags. For example, a comment could be `#NAVN Min variabel #NAVN_EN My variable #INNHOLD Min innhold #INNHOLD_EN English description`. Fail if a field is missing in both the YAML file and the database. Use the logging library, log (INFO) which source is taken. If --verbose is specified, log the values as well.
 
 ## CLI
 
@@ -301,6 +288,3 @@ Write three sets of documentation.
 Create an `eksempel` folder containing `inputs/ost_befolkning_kjonn.csv`, `inputs/ost_befolkning_alder.csv`, `outputs/ost_befolkning_kjonn.csv`, `outputs/ost_befolkning_alder.csv`, a configuration file for the transformations, SQL files that refer to the OBT source tables, and a README explaining how to run the example locally.
 
 TODO:
-- get source types from cursor, ikke dataframe. ignore with csv
-- determine incremental periods first, then read data for those periods only. Maybe do a select where 1=0 and compare
-- period filter

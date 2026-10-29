@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 
-import logging
 import oracledb
 from oracledb import Cursor
-from statistikkprodukt.config import SmallAggregate, Metadata
+from statistikkprodukt.config import SmallAggregate, Metadata, validate_identifier
 
 LOGGER = logging.getLogger(__name__)
 
@@ -15,6 +15,25 @@ LOGGER = logging.getLogger(__name__)
 class TableMetadata:
     table: Metadata
     columns: dict[str, Metadata]
+
+
+def column_comment_statements(
+        schema: str, aggregate: SmallAggregate, metadata: TableMetadata
+) -> list[str]:
+    """Lager Oracle-setninger for kommentarer på aggregatets kolonner."""
+    table = f"{validate_identifier(schema)}.{validate_identifier(aggregate.tabell)}"
+    statements = []
+    for column, column_metadata in metadata.columns.items():
+        qualified_column = f"{table}.{validate_identifier(column)}"
+        comment = " ".join(
+            f"#{tag.upper()} {getattr(column_metadata, tag)}"
+            for tag in Metadata.model_fields
+        )
+        escaped_comment = comment.replace("'", "''")
+        statements.append(
+            f"COMMENT ON COLUMN {qualified_column} IS '{escaped_comment}'"
+        )
+    return statements
 
 
 def read_metadata(
@@ -26,16 +45,24 @@ def read_metadata(
 
     Data fra konfigurasjon prioriteres over databasekommentarer.
     """
-    table_name = aggregate.tabell
+    table_parts = aggregate.obt_tabell.split(".")
+    owner, table_name = (table_parts[0], table_parts[1]) if len(table_parts) == 2 else (
+        schema,
+        table_parts[0],
+    )
     with connection.cursor() as cursor:
-        db_metadata = _fetch_table_metadata(schema, table_name, cursor)
-        config_metadata = Metadata.model_validate(aggregate.model_dump())
+        db_metadata = _fetch_table_metadata(owner, table_name, cursor)
+        config_metadata = Metadata.model_validate(
+            aggregate.model_dump(include=set(Metadata.model_fields))
+        )
         table_metadata = _merge_metadata(table_name, config_metadata, db_metadata)
 
         columns_metadata = {}
         for variable in [*aggregate.variabler, aggregate.tallkolonne]:
-            db_metadata = _fetch_column_metadata(schema, table_name, variable.kolonne, cursor)
-            config_metadata = Metadata.model_validate(variable.model_dump())
+            db_metadata = _fetch_column_metadata(owner, table_name, variable.kolonne, cursor)
+            config_metadata = Metadata.model_validate(
+                variable.model_dump(include=set(Metadata.model_fields))
+            )
             column_metadata = _merge_metadata(variable.kolonne, config_metadata, db_metadata)
 
             columns_metadata[variable.kolonne] = column_metadata
