@@ -27,5 +27,5 @@ def test_csv_pipeline_writes_marked_result_without_database(tmp_path):
 
     result = pd.read_csv(output_directory / "tabell.csv")
     assert result.to_dict("records") == [
-        {"periode": 202501, "region": "Oslo", "antall": 12, "prikket": True}
+        {"periode": 202501, "region": "Oslo", "antall": 12, "primary": True, "suppressed": True}
     ]

@@ -197,7 +197,7 @@ def test_write_database_writes_column_comments_to_all_comments(
             cursor.execute(
                 f"CREATE TABLE SYSTEM.{aggregate.tabell} ("
                 "periode NUMBER, region VARCHAR2(100), "
-                "antall NUMBER, prikket NUMBER(1))"
+                "antall NUMBER, primary NUMBER(1), suppressed NUMBER(1))"
             )
 
         app._write_database(
@@ -208,7 +208,8 @@ def test_write_database_writes_column_comments_to_all_comments(
                     "periode": [202501],
                     "region": ["Oslo"],
                     "antall": [10],
-                    "prikket": [True],
+                    "primary": [True],
+                    "suppressed": [True],
                 }
             ),
             app.Transfer(
@@ -269,7 +270,7 @@ def test_empty_database_result_does_not_inspect_or_mutate_connection():
         NoDatabaseCalls(),
         "TEST",
         aggregate,
-        pd.DataFrame(columns=["periode", "region", "antall", "prikket"]),
+        pd.DataFrame(columns=["periode", "region", "antall", "primary", "suppressed"]),
     )
 
 
@@ -282,7 +283,7 @@ def test_insert_schema_errors_are_reported_by_oracle(oracle_connection):
             cursor.execute(
                 f"CREATE TABLE SYSTEM.{table} ("
                 "periode NUMBER, region VARCHAR2(100), "
-                "antall NUMBER, prikket NUMBER(1))"
+                "antall NUMBER, primary NUMBER(1), suppressed NUMBER(1))"
             )
 
         with pytest.raises(oracledb.DatabaseError):
@@ -414,17 +415,17 @@ def test_process_aggregate_only_masks_selected_periods(
             cursor.execute(
                 f"CREATE TABLE SYSTEM.{table} ("
                 "periode NUMBER, region VARCHAR2(100), "
-                "antall NUMBER, prikket NUMBER(1))"
+                "antall NUMBER, primary NUMBER(1), suppressed NUMBER(1))"
             )
             cursor.executemany(
-                f"INSERT INTO SYSTEM.{table} VALUES (:1, :2, :3, :4)",
-                [(202500, "Oslo", 0, 1), (202501, "Oslo", 1, 1), (202502, "Oslo", 2, 1)],
+                f"INSERT INTO SYSTEM.{table} VALUES (:1, :2, :3, :4, :5)",
+                [(202500, "Oslo", 0, 1, 1), (202501, "Oslo", 1, 1, 1), (202502, "Oslo", 2, 1, 1)],
             )
             if mode == "overskriv_siste_periode":
                 # Make 202503 the existing latest period so this mode must replace it.
                 cursor.execute(
-                    f"INSERT INTO SYSTEM.{table} VALUES (:1, :2, :3, :4)",
-                    [202503, "Oslo", 3, 1],
+                    f"INSERT INTO SYSTEM.{table} VALUES (:1, :2, :3, :4, :5)",
+                    [202503, "Oslo", 3, 1, 1],
                 )
 
         app._process_aggregate(

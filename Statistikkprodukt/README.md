@@ -43,7 +43,6 @@ uv run statistikkprodukt skjema opprett --config eksempel/konfigurasjon.yml aggr
 
 Kommandoen bruker den konfigurerte Oracle-tilkoblingen til å sjekke målskjemaet og hente metadata. Tabeller som finnes fra før, hoppes over. Legg til `--db` for å utføre DDL-en i Oracle i stedet for å skrive den ut. Tabellen opprettes uten rader ved hjelp av `WHERE 1 = 0`.
 
-Prikking er foreløpig ikke implementert: resultatet får en boolsk `prikket`-kolonne med verdien `True`. R-integrasjonen er klargjort, men kjøres ikke ennå.
 
 ## Konfigurasjon
 

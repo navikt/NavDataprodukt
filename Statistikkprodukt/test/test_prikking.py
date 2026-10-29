@@ -14,6 +14,8 @@ def test_prikking_adds_boolean_column_and_preserves_input_dtypes():
         saerskilt=False,
     )
     assert result["periode"].dtype == data["periode"].dtype
-    assert result["prikket"].tolist() == [True]
-    assert result["prikket"].dtype == bool
-    assert list(result.columns) == ["periode", "prikket"]
+    assert result["primary"].tolist() == [True]
+    assert result["suppressed"].tolist() == [True]
+    assert result["primary"].dtype == bool
+    assert result["suppressed"].dtype == bool
+    assert list(result.columns) == ["periode", "primary", "suppressed"]

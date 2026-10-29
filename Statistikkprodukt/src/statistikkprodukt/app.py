@@ -212,7 +212,7 @@ def _process_aggregate(
         prikking=aggregate.prikking,
         saerskilt=aggregate.saerskilt,
     )
-    result = result[[*data.columns, "prikket"]]
+    result = result[[*data.columns, "primary", "suppressed"]]
 
     LOGGER.info("Skriver %d rader for %s.", len(result), aggregate.tabell)
     _write_output(

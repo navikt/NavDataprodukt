@@ -110,7 +110,7 @@ def create_table_statement(schema: str, aggregate: SmallAggregate, sql: str) -> 
     source_sql = sql.strip().removesuffix(";").rstrip()
     return (
         f"CREATE TABLE {table} AS\n"
-        "SELECT source_data.*, CAST(NULL AS NUMBER(1)) AS prikket\n"
+        "SELECT source_data.*, CAST(NULL AS NUMBER(1)) AS primary, CAST(NULL AS NUMBER(1)) AS suppressed\n"
         f"FROM (\n{source_sql}\n) source_data\n"
         "WHERE 1 = 0"
     )

@@ -82,7 +82,8 @@ def _run_r_prikking(
 def _result_passthrough(data: pd.DataFrame) -> pd.DataFrame:
     """Legger til den foreløpige boolske prikkingmarkøren."""
     result = data.copy()
-    result["prikket"] = pd.Series(True, index=result.index, dtype=bool)
+    result["primary"] = pd.Series(True, index=result.index, dtype=bool)
+    result["suppressed"] = pd.Series(True, index=result.index, dtype=bool)
     return result
 
 # def _r_script_path() -> Path:

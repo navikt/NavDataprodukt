@@ -115,12 +115,12 @@ def test_fetch_periods_from_source_and_target(monkeypatch, tmp_path, csv_input):
     read_target = MagicMock(return_value={202501})
     monkeypatch.setattr(oracle, "read_periods", read_source)
     monkeypatch.setattr(oracle, "read_target_periods", read_target)
+    input_directory = tmp_path / "input"
     if csv_input:
-        directory = tmp_path / "input"
-        directory.mkdir()
+        input_directory.mkdir()
         pd.DataFrame(
             {"periode": [202501, 202502, 202502], "region": ["Oslo"] * 3, "antall": [1, 2, 3]}
-        ).to_csv(directory / "tabell.csv", index=False)
+        ).to_csv(input_directory / "tabell.csv", index=False)
 
     assert app._fetch_periods(
         config,
@@ -130,7 +130,7 @@ def test_fetch_periods_from_source_and_target(monkeypatch, tmp_path, csv_input):
             connection,
             StorageOption.CSV if csv_input else StorageOption.DB,
             StorageOption.DB,
-            Path("input"),
+            input_directory,
             Path("output")
         ),
     ) == ({202501, 202502}, {202501})
@@ -175,7 +175,7 @@ def test_process_selects_periods_before_reading(monkeypatch, tmp_path, periods):
     monkeypatch.setattr(app, "_read_input", calls.read)
     monkeypatch.setattr(app, "_write_output", calls.write)
     monkeypatch.setattr(oracle, "read_metadata", MagicMock())
-    mask = MagicMock(return_value=data.assign(prikket=True))
+    mask = MagicMock(return_value=data.assign(primary=True, suppressed=True))
     monkeypatch.setattr(app, "prikking", mask)
 
     app._process_aggregate(

@@ -34,7 +34,7 @@ def test_create_tables_and_run_loads_grouped_obt_data(
     monkeypatch.setattr(
         app,
         "prikking",
-        lambda data, **_: data.assign(prikket=True),
+        lambda data, **_: data.assign(suppressed=True, primary=True),
     )
 
     (tmp_path / "konfigurasjon.yml").write_text(
@@ -121,15 +121,15 @@ group by periode, region
 
         with oracle_connection.cursor() as cursor:
             cursor.execute(
-                f"SELECT periode, region, antall, prikket "
+                f"SELECT periode, region, antall, primary, suppressed "
                 f"FROM SYSTEM.{aggregate_table} ORDER BY periode, region"
             )
             loaded_rows = cursor.fetchall()
 
         assert loaded_rows == [
-            (202501, "Bergen", 7, 1),
-            (202501, "Oslo", 15, 1),
-            (202502, "Oslo", 3, 1),
+            (202501, "Bergen", 7, 1, 1),
+            (202501, "Oslo", 15, 1, 1),
+            (202502, "Oslo", 3, 1, 1),
         ]
     finally:
         with oracle_connection.cursor() as cursor:
