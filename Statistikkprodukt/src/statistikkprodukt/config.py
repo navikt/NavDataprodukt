@@ -179,6 +179,16 @@ class SmallAggregate(StrictModel):
         """Gjør tomme metadatafelt om til manglende verdier."""
         return value.strip() or None if isinstance(value, str) else value
 
+    @property
+    def prepub_tabell(self) -> str:
+        """Navnet på tabellen/CSV-en med prikkede data."""
+        return f"{self.tabell}_prepub"
+
+    @property
+    def kontroll_tabell(self) -> str:
+        """Navnet på tabellen/CSV-en med kontrolldata for feilsøking."""
+        return f"{self.tabell}_kontroll"
+
     @field_validator("inkrementell", mode="before")
     @classmethod
     def validate_incremental_mode(cls, value: str) -> str:

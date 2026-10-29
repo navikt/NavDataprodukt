@@ -94,28 +94,44 @@ def create_tables(
     aggregates = _select_aggregates(configuration, selected_tables)
     connection = _connect(configuration)
     try:
+        schema = configuration.connection.schema_name
         for aggregate in aggregates:
-            schema = configuration.connection.schema_name
-            if oracle.table_exists(connection, schema, aggregate.tabell):
-                LOGGER.info(
-                    "Tabellen %s.%s finnes allerede; hopper over.",
-                    schema,
-                    aggregate.tabell,
-                )
+            tables = [
+                (aggregate.prepub_tabell, False),
+                (aggregate.kontroll_tabell, True),
+            ]
+            missing = []
+            for table_name, with_markers in tables:
+                if oracle.table_exists(connection, schema, table_name):
+                    LOGGER.info(
+                        "Tabellen %s.%s finnes allerede; hopper over.",
+                        schema,
+                        table_name,
+                    )
+                else:
+                    missing.append((table_name, with_markers))
+            if not missing:
                 continue
 
             metadata = oracle.read_metadata(connection, schema, aggregate)
-            statements = [
-                oracle.create_table_statement(
-                    schema, aggregate, _read_sql(aggregate, config_directory)
-                ),
-                *oracle.column_comment_statements(schema, aggregate, metadata),
-            ]
+            sql = _read_sql(aggregate, config_directory)
+            statements = []
+            for table_name, with_markers in missing:
+                statements.append(
+                    oracle.create_table_statement(
+                        schema, table_name, sql, with_markers=with_markers
+                    )
+                )
+                statements.extend(oracle.comment_statements(schema, table_name, metadata))
+
             if create_in_database:
                 with connection.cursor() as cursor:
                     for statement in statements:
                         cursor.execute(statement)
-                LOGGER.info("Opprettet tabellen %s.%s.", schema, aggregate.tabell)
+                LOGGER.info(
+                    "Opprettet tabellene %s.",
+                    ", ".join(f"{schema}.{name}" for name, _ in missing),
+                )
             else:
                 print(";\n".join(statements) + ";")
     finally:
@@ -204,7 +220,7 @@ def _process_aggregate(
     LOGGER.info("Lest %d rader for %s.", len(data), aggregate.tabell)
 
     LOGGER.info("Prikker %d rader for %s.", len(data), aggregate.tabell)
-    result = prikking(
+    prepub, kontroll = prikking(
         data,
         periode=aggregate.periodisering,
         formula=aggregate.formula,
@@ -212,13 +228,17 @@ def _process_aggregate(
         prikking=aggregate.prikking,
         saerskilt=aggregate.saerskilt,
     )
-    result = result[[*data.columns, "primary", "suppressed"]]
 
-    LOGGER.info("Skriver %d rader for %s.", len(result), aggregate.tabell)
+    # ensure column order
+    prepub = prepub[list(data.columns)]
+    kontroll = kontroll[[*data.columns, "primary", "suppressed"]]
+
+    LOGGER.info("Skriver %d rader for %s.", len(prepub), aggregate.tabell)
     _write_output(
         configuration,
         aggregate,
-        result,
+        prepub,
+        kontroll,
         transfer,
         config_directory=config_directory,
         dry_run=dry_run,
@@ -318,21 +338,24 @@ def _read_input(
 def _write_output(
         configuration: Configuration,
         aggregate: SmallAggregate,
-        result: pd.DataFrame,
+        prepub: pd.DataFrame,
+        kontroll: pd.DataFrame,
         transfer: Transfer,
         *,
         config_directory: Path,
         dry_run: bool,
 ) -> None:
-    """Sender resultatet til CSV eller Oracle."""
+    """Sender prikkede data og kontrolldata til CSV eller Oracle."""
     if transfer.target == StorageOption.CSV:
         directory = transfer.output_directory
-        lokal.write_csv(result, directory, aggregate, dry_run=dry_run)
+        lokal.write_csv(prepub, directory, aggregate, aggregate.prepub_tabell, dry_run=dry_run)
+        lokal.write_csv(kontroll, directory, aggregate, aggregate.kontroll_tabell, dry_run=dry_run)
     else:
         _write_database(
             configuration,
             aggregate,
-            result,
+            prepub,
+            kontroll,
             transfer,
             dry_run=dry_run,
         )
@@ -341,37 +364,45 @@ def _write_output(
 def _write_database(
         configuration: Configuration,
         aggregate: SmallAggregate,
-        result: pd.DataFrame,
+        prepub: pd.DataFrame,
+        kontroll: pd.DataFrame,
         transfer: Transfer,
         *,
         dry_run: bool,
 ) -> None:
-    """Skriver resultatet til Oracle."""
+    """Skriver prepub- og kontrolltabellen til Oracle."""
     schema = configuration.connection.schema_name
     connection = transfer.connection
+    results = [
+        (aggregate.prepub_tabell, prepub),
+        (aggregate.kontroll_tabell, kontroll),
+    ]
     if connection is None:
         if not dry_run:
             raise RuntimeError("Databasetilkobling mangler.")
 
-        LOGGER.info(
-            "Ville skrevet %d rader til %s.%s.",
-            len(result),
-            schema,
-            aggregate.tabell,
-        )
+        for table_name, frame in results:
+            LOGGER.info(
+                "Ville skrevet %d rader til %s.%s.",
+                len(frame),
+                schema,
+                table_name,
+            )
         return
 
     metadata = None
     if not dry_run:
         metadata = oracle.read_metadata(connection, schema, aggregate)
 
-    oracle.write_result(
-        connection,
-        schema,
-        aggregate,
-        result,
-        dry_run=dry_run,
-    )
-    if not dry_run:
-        LOGGER.info("Oppdaterer kolonnekommentarer for %s.", aggregate.tabell)
-        oracle.write_column_comments(connection, schema, aggregate, metadata)
+    for table_name, frame in results:
+        oracle.write_result(
+            connection,
+            schema,
+            aggregate,
+            table_name,
+            frame,
+            dry_run=dry_run,
+        )
+        if not dry_run:
+            LOGGER.info("Oppdaterer kommentarer for %s.", table_name)
+            oracle.write_comments(connection, schema, table_name, metadata)

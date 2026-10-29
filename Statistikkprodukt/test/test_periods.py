@@ -175,7 +175,7 @@ def test_process_selects_periods_before_reading(monkeypatch, tmp_path, periods):
     monkeypatch.setattr(app, "_read_input", calls.read)
     monkeypatch.setattr(app, "_write_output", calls.write)
     monkeypatch.setattr(oracle, "read_metadata", MagicMock())
-    mask = MagicMock(return_value=data.assign(primary=True, suppressed=True))
+    mask = MagicMock(return_value=(data, data.assign(primary=True, suppressed=True)))
     monkeypatch.setattr(app, "prikking", mask)
 
     app._process_aggregate(

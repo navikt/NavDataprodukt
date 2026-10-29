@@ -8,7 +8,7 @@ def prikking(
         tallKol: str,
         prikking: bool,
         saerskilt: bool,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Returner foreløpig et markert datasett uten å starte R."""
     return _result_passthrough(data)
     # return _run_r_prikking(data, periode, formula, tallKol, prikking, saerskilt)
@@ -79,12 +79,12 @@ def _run_r_prikking(
     return final_smalt, final_kontroll
 
 
-def _result_passthrough(data: pd.DataFrame) -> pd.DataFrame:
+def _result_passthrough(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Legger til den foreløpige boolske prikkingmarkøren."""
     result = data.copy()
     result["primary"] = pd.Series(True, index=result.index, dtype=bool)
     result["suppressed"] = pd.Series(True, index=result.index, dtype=bool)
-    return result
+    return data.copy(), result
 
 # def _r_script_path() -> Path:
 #    """Finner den pakkede dvh_prikking.R-filen."""

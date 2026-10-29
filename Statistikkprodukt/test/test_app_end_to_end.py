@@ -34,7 +34,7 @@ def test_create_tables_and_run_loads_grouped_obt_data(
     monkeypatch.setattr(
         app,
         "prikking",
-        lambda data, **_: data.assign(suppressed=True, primary=True),
+        lambda data, **_: (data, data.assign(suppressed=True, primary=True)),
     )
 
     (tmp_path / "konfigurasjon.yml").write_text(
@@ -121,11 +121,21 @@ group by periode, region
 
         with oracle_connection.cursor() as cursor:
             cursor.execute(
+                f"SELECT periode, region, antall "
+                f"FROM SYSTEM.{aggregate_table}_prepub ORDER BY periode, region"
+            )
+            prepub_rows = cursor.fetchall()
+            cursor.execute(
                 f"SELECT periode, region, antall, primary, suppressed "
-                f"FROM SYSTEM.{aggregate_table} ORDER BY periode, region"
+                f"FROM SYSTEM.{aggregate_table}_kontroll ORDER BY periode, region"
             )
             loaded_rows = cursor.fetchall()
 
+        assert prepub_rows == [
+            (202501, "Bergen", 7),
+            (202501, "Oslo", 15),
+            (202502, "Oslo", 3),
+        ]
         assert loaded_rows == [
             (202501, "Bergen", 7, 1, 1),
             (202501, "Oslo", 15, 1, 1),
@@ -133,7 +143,11 @@ group by periode, region
         ]
     finally:
         with oracle_connection.cursor() as cursor:
-            for table in (aggregate_table, source_table):
+            for table in (
+                f"{aggregate_table}_prepub",
+                f"{aggregate_table}_kontroll",
+                source_table,
+            ):
                 cursor.execute(
                     "SELECT 1 FROM all_tables "
                     "WHERE owner = 'SYSTEM' AND table_name = :table_name",

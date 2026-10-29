@@ -31,7 +31,9 @@ Kjør med `--dry-run` for å se planlagte endringer uten å skrive filer.
 
 `--kilde` og `--maal` velger hver for seg `db` eller `csv`; begge har `db` som standard. CSV-mappene kan angis med `--kilde-mappe` og `--maal-mappe`; standardene er `data_inn` og `data_ut`. Eksisterende resultatfiler overskrives. 
 
-Opprett en tom måltabell basert på SQL-spørringen og skriv DDL med kolonnekommentarer til standard output:
+Resultatet skrives til to tabeller (eller CSV-filer): `{tabell}_prepub` med de prikkede dataene, og `{tabell}_kontroll` med kontrolldata for feilsøking (inkludert kolonnene `primary` og `suppressed`). Inndata-CSV heter fortsatt `{tabell}.csv`.
+
+Opprett tomme måltabeller (`_prepub` og `_kontroll`) basert på SQL-spørringen og skriv DDL med tabell- og kolonnekommentarer til standard output:
 
 ```sh
 # For alle aggregater i konfigurasjonen
