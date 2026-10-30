@@ -12,7 +12,7 @@ definisjon:
     kolonne: antall
     innhold: Antall personer i gruppen.
     innhold_en: Number of people in the group.
-  formula: "~ periode * alder"
+  formula: "~ periode : alder"
   prikking: true
   saerskilt: false
   variabler:

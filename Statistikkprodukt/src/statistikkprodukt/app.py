@@ -202,7 +202,7 @@ def _process_aggregate(
         dry_run: bool,
 ) -> None:
     """Leser, prikker og lagrer ett småaggregat."""
-    LOGGER.info("Behandler småaggregatet %s.", aggregate.tabell)
+    LOGGER.info("Leser data for %s.", aggregate.tabell)
     periods_to_load = _get_periods_to_load(
         configuration,
         aggregate,
@@ -217,23 +217,22 @@ def _process_aggregate(
         transfer,
         periods_to_load=periods_to_load,
     )
-    LOGGER.info("Lest %d rader for %s.", len(data), aggregate.tabell)
 
     LOGGER.info("Prikker %d rader for %s.", len(data), aggregate.tabell)
     prepub, kontroll = prikking(
         data,
-        periode=aggregate.periodisering,
-        formula=aggregate.formula,
-        tallKol=aggregate.tallkolonne.kolonne,
-        prikking=aggregate.prikking,
-        saerskilt=aggregate.saerskilt,
+        aggregate.periodisering,
+        aggregate.formula,
+        aggregate.tallkolonne.kolonne,
+        aggregate.prikking,
+        aggregate.saerskilt,
     )
 
     # ensure column order
     prepub = prepub[list(data.columns)]
     kontroll = kontroll[[*data.columns, "primary", "suppressed"]]
 
-    LOGGER.info("Skriver %d rader for %s.", len(prepub), aggregate.tabell)
+    LOGGER.info("Skriver %(len)d rader til %(tab)s_prepub og %(tab)s_kontroll.", {"len": len(prepub), "tab": aggregate.tabell})
     _write_output(
         configuration,
         aggregate,

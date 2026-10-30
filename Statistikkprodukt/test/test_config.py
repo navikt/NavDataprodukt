@@ -22,7 +22,7 @@ def configuration():
                     "periodisering": "periode",
                     "inkrementell": "overskriv_ikke",
                     "tallkolonne": {"kolonne": "antall"},
-                    "formula": "~ periode * region",
+                    "formula": "~ periode / region",
                     "prikking": True,
                     "saerskilt": False,
                     "variabler": [{"kolonne": "periode"}, {"kolonne": "region"}],

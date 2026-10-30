@@ -1,7 +1,7 @@
 from pathlib import Path
 from uuid import uuid4
 
-from statistikkprodukt import app
+from statistikkprodukt import app, oracle
 from statistikkprodukt.config import DATABASE_PROFILES, load_configuration, StorageOption
 from statistikkprodukt.testenv import (
     CONTAINER_PORT,
@@ -11,7 +11,7 @@ from statistikkprodukt.testenv import (
 )
 
 
-def test_create_tables_and_run_loads_grouped_obt_data(
+def test_e2e_run(
         oracle_connection, monkeypatch, tmp_path
 ):
     """Oppretter og fyller ett småaggregat fra en OBT-tabell."""
@@ -30,11 +30,6 @@ def test_create_tables_and_run_loads_grouped_obt_data(
             "port": CONTAINER_PORT,
             "service_name": ORACLE_SERVICE,
         },
-    )
-    monkeypatch.setattr(
-        app,
-        "prikking",
-        lambda data, **_: (data, data.assign(suppressed=True, primary=True)),
     )
 
     (tmp_path / "konfigurasjon.yml").write_text(
@@ -67,7 +62,7 @@ definisjon:
     kolonne: antall
     innhold: Summert antall.
     innhold_en: Summed count.
-  formula: "~ periode * region"
+  formula: "~ periode / region"
   prikking: true
   saerskilt: false
   variabler:
@@ -97,15 +92,15 @@ group by periode, region
         with oracle_connection.cursor() as cursor:
             cursor.execute(
                 f"CREATE TABLE SYSTEM.{source_table} ("
-                "periode NUMBER(6), region VARCHAR2(100), antall NUMBER)"
+                "periode varchar2(6), region VARCHAR2(100), antall NUMBER)"
             )
             cursor.executemany(
                 f"INSERT INTO SYSTEM.{source_table} VALUES (:1, :2, :3)",
                 [
-                    (202501, "Oslo", 10),
-                    (202501, "Oslo", 5),
-                    (202501, "Bergen", 7),
-                    (202502, "Oslo", 3),
+                    ('202501', "Bergen", 7.0),
+                    ('202501', "Oslo", 10.0),
+                    ('202502', "Bergen", 6.0),
+                    ('202502', "Oslo", 3.0),
                 ],
             )
         oracle_connection.commit()
@@ -129,18 +124,31 @@ group by periode, region
                 f"SELECT periode, region, antall, primary, suppressed "
                 f"FROM SYSTEM.{aggregate_table}_kontroll ORDER BY periode, region"
             )
-            loaded_rows = cursor.fetchall()
+            kontroll_rows = cursor.fetchall()
 
-        assert prepub_rows == [
-            (202501, "Bergen", 7),
-            (202501, "Oslo", 15),
-            (202502, "Oslo", 3),
+        expected_prepub = [
+            ('I alt', "I alt", 17),
+            ('202501', "I alt", 17),
+            ('202501', "Bergen", 7),
+            ('202501', "Oslo", 10),
+            ('I alt', "I alt", 9),
+            ('202502', "I alt", 9),
+            ('202502', "Bergen", None),
+            ('202502', "Oslo", None)
         ]
-        assert loaded_rows == [
-            (202501, "Bergen", 7, 1, 1),
-            (202501, "Oslo", 15, 1, 1),
-            (202502, "Oslo", 3, 1, 1),
+        expected_kontroll = [
+            ('I alt', "I alt", 17, 0, 0),
+            ('202501', "I alt", 17, 0, 0),
+            ('202501', "Bergen", 7, 0, 0),
+            ('202501', "Oslo", 10, 0, 0),
+            ('I alt', "I alt", 9, 0, 0),
+            ('202502', "I alt", 9, 0, 0),
+            ('202502', "Bergen", 6, 0, 1),
+            ('202502', "Oslo", 3, 1, 1)
         ]
+
+        assert sorted(prepub_rows) == sorted(expected_prepub)
+        assert sorted(kontroll_rows) == sorted(expected_kontroll)
     finally:
         with oracle_connection.cursor() as cursor:
             for table in (
@@ -148,11 +156,5 @@ group by periode, region
                 f"{aggregate_table}_kontroll",
                 source_table,
             ):
-                cursor.execute(
-                    "SELECT 1 FROM all_tables "
-                    "WHERE owner = 'SYSTEM' AND table_name = :table_name",
-                    table_name=table.upper(),
-                )
-                if cursor.fetchone():
+                if oracle.table_exists(oracle_connection, "SYSTEM", table):
                     cursor.execute(f"DROP TABLE SYSTEM.{table} PURGE")
-        oracle_connection.commit()

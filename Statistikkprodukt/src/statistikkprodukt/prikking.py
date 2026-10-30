@@ -1,28 +1,19 @@
 import pandas as pd
+import logging
 
 
 def prikking(
         data: pd.DataFrame,
         periode: str,
         formula: str,
-        tallKol: str,
-        prikking: bool,
-        saerskilt: bool,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Returner foreløpig et markert datasett uten å starte R."""
-    return _result_passthrough(data)
-    # return _run_r_prikking(data, periode, formula, tallKol, prikking, saerskilt)
-
-
-def _run_r_prikking(
-        data: pd.DataFrame,
-        periode: str,
-        formula: str,
-        tallKol: str,
+        tall_kolonne: str,
         prikking: bool,
         saerskilt: bool,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Kjører og samler R-resultater per periode når integrasjonen aktiveres."""
+    if logging.root.level > logging.DEBUG:
+        logging.getLogger("rpy2").setLevel(logging.ERROR)
+
     import rpy2.robjects as robjects
     import rpy2.robjects.packages as rpackages
     from rpy2.robjects import pandas2ri
@@ -39,7 +30,6 @@ def _run_r_prikking(
             "R-pakken 'NavDataprodukt' er ikke installert. Kjør 'statistikkprodukt installer-pakker' for å installere den."
         ) from exc
 
-    # 5. Access the environment objects
     r_prikking = robjects.r('dvh_prikking')
 
     all_results_smalt = []
@@ -56,7 +46,7 @@ def _run_r_prikking(
             df_smalt, df_kontroll = r_prikking(
                 data=subset,
                 formula=formula,
-                tallKol=tallKol,
+                tallKol=tall_kolonne,
                 prikking=prikking,
                 saerskilt=saerskilt,
             )
@@ -77,26 +67,3 @@ def _run_r_prikking(
 
     # Returner DataFrames som tuple
     return final_smalt, final_kontroll
-
-
-def _result_passthrough(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Legger til den foreløpige boolske prikkingmarkøren."""
-    result = data.copy()
-    result["primary"] = pd.Series(True, index=result.index, dtype=bool)
-    result["suppressed"] = pd.Series(True, index=result.index, dtype=bool)
-    return data.copy(), result
-
-# def _r_script_path() -> Path:
-#    """Finner den pakkede dvh_prikking.R-filen."""
-#    module_path = Path(__file__).resolve()
-#    candidates = (
-#        module_path.parent / "R" / "dvh_prikking.R",
-#        module_path.parents[1] / "R" / "dvh_prikking.R",
-#        module_path.parents[2] / "R" / "dvh_prikking.R",
-#    )
-#    for path in candidates:
-#        if path.is_file():
-#            return path
-#    raise FileNotFoundError(
-#        "Fant ikke R-skriptet R/dvh_prikking.R i pakken."
-#    )

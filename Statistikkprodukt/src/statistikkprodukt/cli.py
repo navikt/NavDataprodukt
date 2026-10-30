@@ -143,7 +143,7 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
-    logging.basicConfig(level=getattr(args, "log_level", "INFO"), format="%(levelname)s: %(message)s")
+    logging.basicConfig(level=getattr(args, "log_level", "INFO"), format="%(levelname)s %(name)s: %(message)s")
 
     try:
         if args.command == "testenv":

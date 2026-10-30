@@ -438,15 +438,17 @@ def test_process_aggregate_only_masks_selected_periods(
         "union all select 202502, 'Oslo', 20 from dual "
         "union all select 202503, 'Oslo', 30 from dual;"
     )
-    original_prikking = app.prikking
     # == periods passed to prikking will be loaded in the database.
     # Store those here to use in an assert later on
     masked_periods = []
 
     # Record the periods passed to masking, independently of the resulting table contents.
-    def mask(data, **kwargs):
+    def mask(data, *args, **kwargs):
         masked_periods.extend(data["periode"].tolist())
-        return original_prikking(data, **kwargs)
+        result = data.copy()
+        result["primary"] = pd.Series(True, index=result.index, dtype=bool)
+        result["suppressed"] = pd.Series(True, index=result.index, dtype=bool)
+        return data.copy(), result
 
     monkeypatch.setattr(app, "prikking", mask)
     monkeypatch.setattr(
