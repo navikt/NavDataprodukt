@@ -16,6 +16,7 @@ Denne filen er brukerdokumentasjon. [README_DEV.md](README_DEV.md) er utviklerh�
 
 ## Kom i gang
 
+### Lokal / KNAST
 Last ned repositoriet og installer python avhengigheter:
 ```sh
 uv sync
@@ -53,6 +54,51 @@ Som standard skrives alle små aggregater. Enkelte kan utvelges med navn:
 uv run statistikkprodukt last --config konfigurasjon.yml ost_befolkning_alder ost_befolkning_kjonn
 ```
 
+### Mot databasen
+
+Kjør `eksempel/data_inn/obt_befolkning.sql` i Oracle for å opprette en test obt tabell.
+
+Modifiser `eksempel/konfigurasjon.yml` med riktig databaseprofil:
+```yaml
+connection:
+  host: oracle.example.no
+  port: 1521
+  service: my_service
+  user: my_user[my_schema]
+  password: terminal://
+```
+
+Opprett småaggregat-tabellene i Oracle med følgende kommando:
+- ost_befolkning_alder_prepub
+- ost_befolkning_alder_kontroll
+- ost_befolkning_kjonn_prepub
+- ost_befolkning_kjonn_kontroll
+
+```shell
+cd Statistikkprodukt/eksempel
+statistikkprodukt skjema opprett --config konfigurasjon.yml
+```
+
+Kjør lasten fra databasen til csv:
+```shell
+uv run statistikkprodukt last --config konfigurasjon.yml --maal=csv
+```
+
+CSV filene i `data_ut` overskrives, men de skal ikke endre seg, siden eksempelet er ekvivalent med lasten fra csv til csv.
+Du kan slette de for å verifisere at data kommer inn det.
+
+Kjør lasten fra databasen til databasen:
+```shell
+uv run statistikkprodukt last --config konfigurasjon.yml
+```
+
+Sjekk resultatene i Oracle:
+```sql
+select * from ost_befolkning_alder_kontroll;
+-- ... og andre ost tabeller
+```
+
+# System dokumentasjon
 ## Databaseskjema 
 Databasetabeller kan opprettes som følger:
 
@@ -67,10 +113,14 @@ uv run statistikkprodukt skjema opprett --config konfigurasjon.yml ost_2 ost_1
 Det opprettes to tabeller per aggregat.
 ```sql
 create table ost_1_kontroll (
+  -- Fra SQL spørringen:
   periode_kolonne varchar2(10),
-  variabel_kolonne varchar2(10),
+  variabel1_kolonne varchar2(10),
+  variabel2_kolonne varchar2(10),
   -- tall som ikke er prikket
   tall_kolonne number,
+    
+  -- Lagd til:
   -- primærprikking (små tall) 1/0 for ja/nei
   primary number, 
   -- sekundærprikking via gaussian suppression 1/0 for ja/nei
@@ -78,9 +128,10 @@ create table ost_1_kontroll (
 );
 
 create table ost_1_prepub (
+  -- Fra SQL spørringen:
   periode_kolonne varchar2(10),
   variabel_kolonne varchar2(10),
-  -- null når det er prikket
+  -- nan når det er prikket
   tall_kolonne number
 );
 ```
